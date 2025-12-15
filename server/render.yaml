@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: gadi-bulao-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: JWT_ACCESS_EXPIRY
+        value: 15m
+      - key: JWT_REFRESH_EXPIRY
+        value: 7d
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false

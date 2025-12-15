@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "Gadi Bulao",
+    "slug": "gadi-bulao",
+    "version": "1.0.0",
+    "sdkVersion": "54.0.0",
+    "runtimeVersion": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "updates": {
+      "enabled": false,
+      "checkAutomatically": "NEVER",
+      "fallbackToCacheTimeout": 0,
+      "url": ""
+    },
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourcompany.uberclone",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "We need your location to show nearby drivers and provide ride services.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "We need your location in the background to track your ride and update your position.",
+        "NSLocationAlwaysUsageDescription": "We need your location in the background to track your ride.",
+        "UIBackgroundModes": [
+          "location"
+        ]
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyDvnJHejt7MNC28PJ8ytkPVxiv4opxdnpY"
+      }
+    },
+    "android": {
+      "package": "com.yourcompany.uberclone",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDvnJHejt7MNC28PJ8ytkPVxiv4opxdnpY"
+        }
+      }
+    },
+    "web": {},
+    "plugins": [
+      "expo-router",
+      "expo-location",
+      "expo-font"
+    ],
+    "scheme": "uberclone",
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

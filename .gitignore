@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Environment variables
+.env
+.env.local
+.env.production
+*.env
+
+# Build outputs
+dist/
+build/
+.expo/
+web-build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+.cache/
+temp/
+tmp/
+nul
+
+# Mobile specific
+mobile/.expo/
+mobile/node_modules/
+mobile/web-build/
+
+# Server specific
+server/node_modules/
+server/.env
+.claude/
