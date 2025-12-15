@@ -6,15 +6,11 @@ import { Platform } from 'react-native';
  */
 
 // Server Configuration
-// For web: use localhost (same machine)
-// For mobile: use computer's LAN IP address
-const LOCAL_IP = '10.135.104.135';
+const PRODUCTION_URL = 'https://gadi-bulao-backend.onrender.com';
+const LOCAL_IP = '192.168.1.100'; // Update this if testing locally
 
-export const API_URL = __DEV__
-  ? Platform.OS === 'web'
-    ? 'http://localhost:3000'  // Web: use localhost
-    : `http://${LOCAL_IP}:3000`  // Mobile: use LAN IP for Expo Go
-  : 'https://your-production-server.com';  // Production: your deployed backend
+// Always use production URL for consistent behavior
+export const API_URL = PRODUCTION_URL;
 
 export const SOCKET_URL = API_URL;
 
