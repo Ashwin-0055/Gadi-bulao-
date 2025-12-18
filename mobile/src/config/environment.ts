@@ -1,10 +1,5 @@
 import { Platform } from 'react-native';
 
-/**
- * Environment Configuration
- * Update these values for your deployment
- */
-
 // Server Configuration
 const PRODUCTION_URL = 'https://gadi-bulao-backend.onrender.com';
 const LOCAL_IP = '192.168.1.100'; // Update this if testing locally

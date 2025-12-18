@@ -65,16 +65,12 @@ export default function CustomerHome() {
 
     // Listen for ride request confirmation
     socketService.onRideRequested((data) => {
-      console.log('📡 Ride requested confirmed:', data);
-      // Store the ride ID for potential cancellation
       if (data.rideId) {
         setCurrentRideId(data.rideId);
       }
-      // Keep showing loading - waiting for driver to accept
     });
 
     socketService.onRideAccepted((data) => {
-      console.log('📡 Ride accepted data:', data);
       setIsSearching(false);
       setCurrentRideId(null);
 
@@ -247,7 +243,6 @@ export default function CustomerHome() {
   };
 
   const handleMenuPress = () => {
-    console.log('Menu button pressed');
     Alert.alert('Menu', 'Menu options', [
       { text: 'Profile', onPress: () => {} },
       { text: 'Ride History', onPress: () => {} },
@@ -262,7 +257,6 @@ export default function CustomerHome() {
   };
 
   const handleLogout = () => {
-    console.log('Logout button pressed');
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       { text: 'Cancel', style: 'cancel' },
       {

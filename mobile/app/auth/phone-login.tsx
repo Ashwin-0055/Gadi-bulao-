@@ -1,8 +1,3 @@
-/**
- * Phone Login Screen
- * Phone-based authentication (no password)
- */
-
 import { useState } from 'react';
 import {
   View,
@@ -88,7 +83,6 @@ export default function PhoneLoginScreen() {
       return;
     }
 
-    // For riders, validate vehicle details
     if (role === 'rider' && !validateVehicleDetails()) {
       return;
     }
@@ -97,39 +91,42 @@ export default function PhoneLoginScreen() {
     setError('');
 
     try {
-      // Build login payload
       const loginPayload: any = {
-        phone,
+        phone: phone.startsWith('+91') ? phone : `+91${phone}`,
         name: name.trim(),
         role,
       };
 
-      // Add vehicle details for riders
       if (role === 'rider') {
         loginPayload.vehicle = {
           type: vehicleType,
           model: vehicleModel.trim(),
           plateNumber: vehicleNumber.trim().toUpperCase(),
-          color: vehicleColor.trim() || 'Unknown',
+          color: vehicleColor.trim() || 'White',
         };
       }
 
       const response = await api.auth.login(loginPayload);
 
-      const { tokens, user } = response.data.data;
+      if (response.data && response.data.data) {
+        const { tokens, user } = response.data.data;
 
-      // Save to store (will auto-connect socket via WSProvider)
-      login(tokens, user);
+        await login(tokens, user);
 
-      // Navigate to appropriate screen
-      if (role === 'customer') {
-        router.replace('/customer/home');
+        setTimeout(() => {
+          if (role === 'customer') {
+            router.replace('/customer/home');
+          } else {
+            router.replace('/rider/home');
+          }
+        }, 100);
       } else {
-        router.replace('/rider/home');
+        throw new Error('Invalid response from server');
       }
     } catch (err: any) {
-      console.error('Login error:', err);
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      const errorMessage = err.response?.data?.message || err.message || 'Login failed. Please try again.';
+      setError(errorMessage);
+      Alert.alert('Login Failed', errorMessage);
     } finally {
       setLoading(false);
     }

@@ -76,13 +76,10 @@ export default function RiderHome() {
 
     // Listen for zone subscription confirmation
     socketService.onZoneSubscribed((data) => {
-      console.log('📍 Zone subscribed:', data);
       setCurrentZone(data.zone);
     });
 
-    // Listen for duty status changes
     socketService.onDutyStatusChanged((data) => {
-      console.log('🔄 Duty status changed:', data);
       if (!data.isOnDuty) {
         setOnDuty(false);
         setCurrentZone(null);

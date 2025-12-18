@@ -1,8 +1,3 @@
-/**
- * User Store (Customer Data)
- * Manages customer profile, location, and authentication state
- */
-
 import { create } from 'zustand';
 import { storageHelpers, StorageKeys, authStorage } from './storage';
 

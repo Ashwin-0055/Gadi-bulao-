@@ -6,37 +6,39 @@
     "sdkVersion": "54.0.0",
     "runtimeVersion": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "newArchEnabled": false,
     "updates": {
-      "enabled": false,
-      "checkAutomatically": "NEVER",
-      "fallbackToCacheTimeout": 0,
-      "url": ""
+      "enabled": false
     },
     "splash": {
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#2E7D32"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.uberclone",
+      "bundleIdentifier": "com.gadibulao.app",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We need your location to show nearby drivers and provide ride services.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "We need your location in the background to track your ride and update your position.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "We need your location in the background to track your ride.",
         "NSLocationAlwaysUsageDescription": "We need your location in the background to track your ride.",
-        "UIBackgroundModes": [
-          "location"
-        ]
+        "UIBackgroundModes": ["location"]
       },
       "config": {
         "googleMapsApiKey": "AIzaSyDvnJHejt7MNC28PJ8ytkPVxiv4opxdnpY"
       }
     },
     "android": {
-      "package": "com.yourcompany.uberclone",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#2E7D32"
+      },
+      "package": "com.gadibulao.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -54,9 +56,16 @@
       "expo-location",
       "expo-font"
     ],
-    "scheme": "uberclone",
+    "scheme": "gadibulao",
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f93c97e5-62f8-4c7b-af66-cc528011d384"
+      }
+    },
+    "owner": "ashwin.yadav"
   }
 }
