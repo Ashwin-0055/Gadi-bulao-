@@ -91,8 +91,11 @@ export default function PhoneLoginScreen() {
     setError('');
 
     try {
+      // Remove any prefix - backend expects 10-digit number only
+      const cleanPhone = phone.replace(/^\+91/, '').replace(/^91/, '').trim();
+
       const loginPayload: any = {
-        phone: phone.startsWith('+91') ? phone : `+91${phone}`,
+        phone: cleanPhone,
         name: name.trim(),
         role,
       };
@@ -124,7 +127,16 @@ export default function PhoneLoginScreen() {
         throw new Error('Invalid response from server');
       }
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Login failed. Please try again.';
+      let errorMessage = 'Login failed. Please try again.';
+
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message === 'Network Error') {
+        errorMessage = 'Unable to connect to server. Please check your internet connection.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
       setError(errorMessage);
       Alert.alert('Login Failed', errorMessage);
     } finally {
