@@ -5,7 +5,9 @@ const {
   getRideHistory,
   getRideById,
   cancelRide,
-  getActiveRides
+  getActiveRides,
+  updateRideStatus,
+  adminCancelRide
 } = require('../controllers/rideController');
 const { authenticate } = require('../middleware/auth');
 
@@ -32,17 +34,24 @@ router.post('/calculate-fare', authenticate, calculateFareEstimate);
 router.get('/history', authenticate, getRideHistory);
 
 /**
+ * @route   PATCH /api/rides/:rideId/status
+ * @desc    Update ride status (for admin panel)
+ * @access  Public (for testing - should be admin-only in production)
+ */
+router.patch('/:rideId/status', updateRideStatus);
+
+/**
+ * @route   POST /api/rides/:rideId/cancel
+ * @desc    Cancel a ride (admin - no auth required)
+ * @access  Public (for admin panel)
+ */
+router.post('/:rideId/cancel', adminCancelRide);
+
+/**
  * @route   GET /api/rides/:rideId
  * @desc    Get ride details by ID
  * @access  Private
  */
 router.get('/:rideId', authenticate, getRideById);
-
-/**
- * @route   POST /api/rides/:rideId/cancel
- * @desc    Cancel a ride
- * @access  Private
- */
-router.post('/:rideId/cancel', authenticate, cancelRide);
 
 module.exports = router;

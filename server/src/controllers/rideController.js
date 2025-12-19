@@ -311,10 +311,129 @@ const cancelRide = async (req, res) => {
   }
 };
 
+/**
+ * Update ride status (Admin Panel)
+ */
+const updateRideStatus = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+    const { status } = req.body;
+
+    const validStatuses = ['ARRIVED', 'STARTED', 'COMPLETED'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+      });
+    }
+
+    const ride = await Ride.findById(rideId);
+
+    if (!ride) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ride not found'
+      });
+    }
+
+    // Update status
+    ride.status = status;
+    ride.timestamps[`${status.toLowerCase()}At`] = new Date();
+
+    // If completed, update stats
+    if (status === 'COMPLETED') {
+      if (ride.rider) {
+        await User.findByIdAndUpdate(ride.rider, {
+          $inc: {
+            'riderProfile.totalRides': 1,
+            'riderProfile.earnings': ride.fare?.totalAmount || 0
+          },
+          'riderProfile.isOnDuty': true
+        });
+      }
+      await User.findByIdAndUpdate(ride.customer, {
+        $inc: { 'customerProfile.totalRides': 1 }
+      });
+    }
+
+    await ride.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Ride status updated to ${status}`,
+      data: { ride }
+    });
+
+  } catch (error) {
+    console.error('❌ Update ride status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update ride status',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Admin cancel ride (no auth required)
+ */
+const adminCancelRide = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+    const { reason } = req.body;
+
+    const ride = await Ride.findById(rideId);
+
+    if (!ride) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ride not found'
+      });
+    }
+
+    if (ride.status === 'COMPLETED' || ride.status === 'CANCELLED') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot cancel ride with status: ${ride.status}`
+      });
+    }
+
+    ride.status = 'CANCELLED';
+    ride.cancelledBy = 'admin';
+    ride.cancellationReason = reason || 'Cancelled by admin';
+    ride.timestamps.cancelledAt = new Date();
+
+    await ride.save();
+
+    // Make rider available again
+    if (ride.rider) {
+      await User.findByIdAndUpdate(ride.rider, {
+        'riderProfile.isOnDuty': true
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Ride cancelled by admin',
+      data: { ride }
+    });
+
+  } catch (error) {
+    console.error('❌ Admin cancel ride error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to cancel ride',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   calculateFareEstimate,
   getRideHistory,
   getRideById,
   cancelRide,
-  getActiveRides
+  getActiveRides,
+  updateRideStatus,
+  adminCancelRide
 };

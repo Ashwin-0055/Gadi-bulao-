@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gadi Bulao - Admin Panel</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
+
+    .header {
+      background: linear-gradient(135deg, #4CAF50, #2E7D32);
+      color: white;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .header h1 { font-size: 24px; }
+    .header .status { display: flex; align-items: center; gap: 10px; }
+    .status-dot { width: 12px; height: 12px; border-radius: 50%; background: #ff5722; }
+    .status-dot.connected { background: #8BC34A; }
+
+    .container { display: flex; height: calc(100vh - 70px); }
+
+    .sidebar {
+      width: 400px;
+      background: white;
+      border-right: 1px solid #e0e0e0;
+      overflow-y: auto;
+    }
+
+    .main { flex: 1; display: flex; flex-direction: column; }
+
+    #map { flex: 1; }
+
+    .section { padding: 16px; border-bottom: 1px solid #eee; }
+    .section-title { font-size: 14px; font-weight: 600; color: #666; margin-bottom: 12px; text-transform: uppercase; }
+
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .stat-card { background: #f9f9f9; padding: 16px; border-radius: 8px; text-align: center; }
+    .stat-value { font-size: 28px; font-weight: 700; color: #4CAF50; }
+    .stat-label { font-size: 12px; color: #666; margin-top: 4px; }
+
+    .ride-card {
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+    }
+    .ride-card:hover { background: #f0f0f0; }
+    .ride-card.selected { border-color: #4CAF50; background: #E8F5E9; }
+    .ride-id { font-size: 12px; color: #999; font-family: monospace; }
+    .ride-customer { font-size: 15px; font-weight: 600; margin: 6px 0; }
+    .ride-info { font-size: 13px; color: #666; }
+    .ride-status { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; margin-top: 8px; }
+    .status-searching { background: #FFF3E0; color: #E65100; }
+    .status-accepted { background: #E3F2FD; color: #1565C0; }
+    .status-arrived { background: #F3E5F5; color: #7B1FA2; }
+    .status-started { background: #E8F5E9; color: #2E7D32; }
+    .status-completed { background: #ECEFF1; color: #546E7A; }
+    .status-cancelled { background: #FFEBEE; color: #C62828; }
+
+    .controls { padding: 16px; background: white; border-top: 1px solid #eee; }
+    .control-group { margin-bottom: 16px; }
+    .control-label { font-size: 12px; font-weight: 600; color: #666; margin-bottom: 8px; }
+
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: #4CAF50; color: white; }
+    .btn-primary:hover:not(:disabled) { background: #43A047; }
+    .btn-secondary { background: #e0e0e0; color: #333; }
+    .btn-secondary:hover:not(:disabled) { background: #d0d0d0; }
+    .btn-danger { background: #F44336; color: white; }
+    .btn-danger:hover:not(:disabled) { background: #E53935; }
+    .btn-warning { background: #FF9800; color: white; }
+    .btn-warning:hover:not(:disabled) { background: #FB8C00; }
+    .btn-info { background: #2196F3; color: white; }
+    .btn-info:hover:not(:disabled) { background: #1E88E5; }
+
+    .simulation-controls { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+    .speed-control { display: flex; align-items: center; gap: 8px; }
+    .speed-control input { width: 80px; }
+
+    .empty-state { text-align: center; padding: 40px; color: #999; }
+    .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+
+    .driver-list { max-height: 200px; overflow-y: auto; }
+    .driver-card {
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .driver-name { font-weight: 600; }
+    .driver-vehicle { font-size: 12px; color: #666; }
+    .driver-status { font-size: 11px; padding: 3px 8px; border-radius: 10px; }
+    .driver-online { background: #E8F5E9; color: #2E7D32; }
+    .driver-offline { background: #FFEBEE; color: #C62828; }
+
+    .log-container { max-height: 150px; overflow-y: auto; background: #1e1e1e; border-radius: 6px; padding: 12px; }
+    .log-entry { font-family: monospace; font-size: 12px; color: #aaa; margin-bottom: 4px; }
+    .log-entry.info { color: #4FC3F7; }
+    .log-entry.success { color: #81C784; }
+    .log-entry.error { color: #E57373; }
+    .log-entry.warning { color: #FFB74D; }
+
+    .vehicle-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #E3F2FD; color: #1565C0; margin-left: 8px; }
+
+    @media (max-width: 900px) {
+      .container { flex-direction: column; }
+      .sidebar { width: 100%; height: 50%; }
+      .main { height: 50%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Gadi Bulao Admin Panel</h1>
+    <div class="status">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Connecting...</span>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <!-- Stats -->
+      <div class="section">
+        <div class="section-title">Dashboard</div>
+        <div class="stats">
+          <div class="stat-card">
+            <div class="stat-value" id="activeRidesCount">0</div>
+            <div class="stat-label">Active Rides</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="onlineDriversCount">0</div>
+            <div class="stat-label">Online Drivers</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="totalZonesCount">0</div>
+            <div class="stat-label">Active Zones</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Rides -->
+      <div class="section">
+        <div class="section-title">Active Rides</div>
+        <div id="ridesList">
+          <div class="empty-state">
+            <div class="icon">🚗</div>
+            <div>No active rides</div>
+          </div>
+        </div>
+        <button class="btn btn-secondary" onclick="fetchRides()" style="width: 100%; margin-top: 12px;">
+          🔄 Refresh Rides
+        </button>
+      </div>
+
+      <!-- Online Drivers -->
+      <div class="section">
+        <div class="section-title">Online Drivers</div>
+        <div id="driversList" class="driver-list">
+          <div class="empty-state" style="padding: 20px;">
+            <div>No drivers online</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity Log -->
+      <div class="section">
+        <div class="section-title">Activity Log</div>
+        <div class="log-container" id="logContainer">
+          <div class="log-entry">Waiting for activity...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div id="map"></div>
+
+      <div class="controls">
+        <div class="control-group">
+          <div class="control-label">Selected Ride: <span id="selectedRideId">None</span></div>
+          <div class="btn-group">
+            <button class="btn btn-warning" onclick="updateStatus('ARRIVED')" id="btnArrived" disabled>
+              📍 Mark Arrived
+            </button>
+            <button class="btn btn-info" onclick="updateStatus('STARTED')" id="btnStarted" disabled>
+              🚗 Start Ride
+            </button>
+            <button class="btn btn-primary" onclick="updateStatus('COMPLETED')" id="btnCompleted" disabled>
+              ✅ Complete Ride
+            </button>
+            <button class="btn btn-danger" onclick="cancelRide()" id="btnCancel" disabled>
+              ❌ Cancel Ride
+            </button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">Driver Simulation</div>
+          <div class="simulation-controls">
+            <button class="btn btn-secondary" onclick="moveDriver('back')" id="btnBack" disabled>⏮️</button>
+            <button class="btn btn-primary" onclick="toggleSimulation()" id="btnSimulate" disabled>
+              ▶️ Start Simulation
+            </button>
+            <button class="btn btn-secondary" onclick="moveDriver('forward')" id="btnForward" disabled>⏭️</button>
+            <div class="speed-control">
+              <span>Speed:</span>
+              <input type="range" min="100" max="2000" value="500" id="speedSlider">
+              <span id="speedValue">500ms</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configuration
+    const API_URL = window.location.origin;
+
+    // State
+    let socket = null;
+    let map = null;
+    let selectedRide = null;
+    let rides = [];
+    let drivers = [];
+    let route = [];
+    let routeIndex = 0;
+    let isSimulating = false;
+    let simulationInterval = null;
+    let markers = {};
+    let routeLine = null;
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      connectSocket();
+      fetchRides();
+      fetchStats();
+
+      // Refresh data periodically
+      setInterval(fetchRides, 10000);
+      setInterval(fetchStats, 5000);
+
+      // Speed slider
+      document.getElementById('speedSlider').addEventListener('input', (e) => {
+        document.getElementById('speedValue').textContent = e.target.value + 'ms';
+      });
+    });
+
+    // Initialize Map
+    function initMap() {
+      map = L.map('map').setView([28.6139, 77.2090], 12);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
+
+      // Click to move driver
+      map.on('click', (e) => {
+        if (selectedRide) {
+          const location = { latitude: e.latlng.lat, longitude: e.latlng.lng };
+          sendDriverLocation(location);
+        }
+      });
+    }
+
+    // Connect Socket
+    function connectSocket() {
+      socket = io(API_URL, {
+        transports: ['websocket'],
+        timeout: 60000
+      });
+
+      socket.on('connect', () => {
+        document.getElementById('statusDot').classList.add('connected');
+        document.getElementById('statusText').textContent = 'Connected';
+        addLog('Connected to server', 'success');
+      });
+
+      socket.on('disconnect', () => {
+        document.getElementById('statusDot').classList.remove('connected');
+        document.getElementById('statusText').textContent = 'Disconnected';
+        addLog('Disconnected from server', 'error');
+      });
+
+      socket.on('newRideRequest', (data) => {
+        addLog(`New ride request: ${data.rideId}`, 'info');
+        fetchRides();
+      });
+
+      socket.on('rideAccepted', (data) => {
+        addLog(`Ride accepted: ${data.rideId}`, 'success');
+        fetchRides();
+      });
+
+      socket.on('rideStatusUpdate', (data) => {
+        addLog(`Ride ${data.rideId} status: ${data.status}`, 'info');
+        fetchRides();
+      });
+    }
+
+    // Fetch Rides
+    async function fetchRides() {
+      try {
+        const response = await fetch(`${API_URL}/api/rides/active`);
+        const data = await response.json();
+
+        if (data.success) {
+          rides = data.data || [];
+          document.getElementById('activeRidesCount').textContent = rides.length;
+          renderRides();
+          updateMapMarkers();
+        }
+      } catch (error) {
+        console.error('Error fetching rides:', error);
+      }
+    }
+
+    // Fetch Stats
+    async function fetchStats() {
+      try {
+        const response = await fetch(`${API_URL}/api/stats`);
+        const data = await response.json();
+
+        if (data.success) {
+          document.getElementById('onlineDriversCount').textContent = data.data.zoneStats?.totalDrivers || 0;
+          document.getElementById('totalZonesCount').textContent = data.data.zoneStats?.totalZones || 0;
+
+          // Update drivers list
+          drivers = data.data.onlineDrivers || [];
+          renderDrivers();
+        }
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
+    }
+
+    // Render Rides
+    function renderRides() {
+      const container = document.getElementById('ridesList');
+
+      if (rides.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">🚗</div>
+            <div>No active rides</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = rides.map(ride => `
+        <div class="ride-card ${selectedRide?.rideId === ride.rideId ? 'selected' : ''}"
+             onclick="selectRide('${ride.rideId}')">
+          <div class="ride-id">ID: ${ride.rideId.substring(0, 12)}...</div>
+          <div class="ride-customer">
+            ${ride.customerName || 'Customer'}
+            <span class="vehicle-badge">${ride.vehicleType || 'N/A'}</span>
+          </div>
+          <div class="ride-info">
+            📍 ${ride.pickup?.address?.substring(0, 30) || 'Pickup'}...
+          </div>
+          <div class="ride-info">
+            🎯 ${ride.dropoff?.address?.substring(0, 30) || 'Dropoff'}...
+          </div>
+          <span class="ride-status status-${ride.status?.toLowerCase()}">${ride.status}</span>
+        </div>
+      `).join('');
+    }
+
+    // Render Drivers
+    function renderDrivers() {
+      const container = document.getElementById('driversList');
+
+      if (!drivers || drivers.length === 0) {
+        container.innerHTML = `<div class="empty-state" style="padding: 20px;"><div>No drivers online</div></div>`;
+        return;
+      }
+
+      container.innerHTML = drivers.map(driver => `
+        <div class="driver-card">
+          <div>
+            <div class="driver-name">${driver.name || 'Driver'}</div>
+            <div class="driver-vehicle">${driver.vehicleType || 'Unknown'} - ${driver.zone || 'No zone'}</div>
+          </div>
+          <span class="driver-status driver-online">Online</span>
+        </div>
+      `).join('');
+    }
+
+    // Select Ride
+    function selectRide(rideId) {
+      selectedRide = rides.find(r => r.rideId === rideId);
+      document.getElementById('selectedRideId').textContent = rideId.substring(0, 12) + '...';
+
+      // Enable buttons
+      document.getElementById('btnArrived').disabled = !selectedRide;
+      document.getElementById('btnStarted').disabled = !selectedRide;
+      document.getElementById('btnCompleted').disabled = !selectedRide;
+      document.getElementById('btnCancel').disabled = !selectedRide;
+      document.getElementById('btnSimulate').disabled = !selectedRide;
+      document.getElementById('btnBack').disabled = !selectedRide;
+      document.getElementById('btnForward').disabled = !selectedRide;
+
+      renderRides();
+      updateMapMarkers();
+      fetchRoute();
+
+      addLog(`Selected ride: ${rideId.substring(0, 12)}`, 'info');
+    }
+
+    // Update Map Markers
+    function updateMapMarkers() {
+      // Clear existing markers
+      Object.values(markers).forEach(m => map.removeLayer(m));
+      markers = {};
+      if (routeLine) map.removeLayer(routeLine);
+
+      if (!selectedRide) return;
+
+      // Pickup marker
+      if (selectedRide.pickup) {
+        const pickupIcon = L.divIcon({
+          html: '<div style="background:#22c55e;width:24px;height:24px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+        markers.pickup = L.marker([selectedRide.pickup.latitude, selectedRide.pickup.longitude], { icon: pickupIcon })
+          .addTo(map)
+          .bindPopup('Pickup: ' + (selectedRide.pickup.address || 'Pickup Location'));
+      }
+
+      // Dropoff marker
+      if (selectedRide.dropoff) {
+        const dropoffIcon = L.divIcon({
+          html: '<div style="background:#ef4444;width:24px;height:24px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+        markers.dropoff = L.marker([selectedRide.dropoff.latitude, selectedRide.dropoff.longitude], { icon: dropoffIcon })
+          .addTo(map)
+          .bindPopup('Dropoff: ' + (selectedRide.dropoff.address || 'Dropoff Location'));
+      }
+
+      // Driver marker
+      if (selectedRide.driverLocation) {
+        updateDriverMarker(selectedRide.driverLocation);
+      }
+
+      // Fit bounds
+      if (selectedRide.pickup && selectedRide.dropoff) {
+        map.fitBounds([
+          [selectedRide.pickup.latitude, selectedRide.pickup.longitude],
+          [selectedRide.dropoff.latitude, selectedRide.dropoff.longitude]
+        ], { padding: [50, 50] });
+      }
+    }
+
+    // Update Driver Marker
+    function updateDriverMarker(location) {
+      if (markers.driver) map.removeLayer(markers.driver);
+
+      const driverIcon = L.divIcon({
+        html: '<div style="background:#4CAF50;width:32px;height:32px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:18px;">🚗</div>',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+
+      markers.driver = L.marker([location.latitude, location.longitude], { icon: driverIcon })
+        .addTo(map)
+        .bindPopup('Driver Location');
+    }
+
+    // Fetch Route
+    async function fetchRoute() {
+      if (!selectedRide) return;
+
+      const start = selectedRide.driverLocation || selectedRide.pickup;
+      const end = selectedRide.status === 'STARTED' ? selectedRide.dropoff : selectedRide.pickup;
+
+      try {
+        const response = await fetch(
+          `https://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson`
+        );
+        const data = await response.json();
+
+        if (data.code === 'Ok' && data.routes.length > 0) {
+          route = data.routes[0].geometry.coordinates.map(c => ({ latitude: c[1], longitude: c[0] }));
+          routeIndex = 0;
+
+          // Draw route
+          if (routeLine) map.removeLayer(routeLine);
+          routeLine = L.polyline(route.map(r => [r.latitude, r.longitude]), {
+            color: '#2196F3',
+            weight: 4,
+            opacity: 0.8
+          }).addTo(map);
+
+          addLog(`Route loaded: ${route.length} points`, 'info');
+        }
+      } catch (error) {
+        console.error('Error fetching route:', error);
+      }
+    }
+
+    // Send Driver Location
+    function sendDriverLocation(location) {
+      if (!selectedRide || !socket) return;
+
+      socket.emit('admin:updateDriverLocation', {
+        rideId: selectedRide.rideId,
+        location: location
+      });
+
+      updateDriverMarker(location);
+      selectedRide.driverLocation = location;
+    }
+
+    // Update Status
+    async function updateStatus(status) {
+      if (!selectedRide) return;
+
+      try {
+        const response = await fetch(`${API_URL}/api/rides/${selectedRide.rideId}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          addLog(`Status updated to ${status}`, 'success');
+          selectedRide.status = status;
+
+          if (status === 'STARTED') {
+            fetchRoute(); // Update route to dropoff
+          }
+
+          fetchRides();
+        } else {
+          addLog(`Failed to update status: ${data.message}`, 'error');
+        }
+      } catch (error) {
+        addLog(`Error updating status: ${error.message}`, 'error');
+      }
+    }
+
+    // Cancel Ride
+    async function cancelRide() {
+      if (!selectedRide) return;
+
+      if (!confirm('Are you sure you want to cancel this ride?')) return;
+
+      try {
+        const response = await fetch(`${API_URL}/api/rides/${selectedRide.rideId}/cancel`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: 'Cancelled by admin' })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          addLog('Ride cancelled', 'warning');
+          selectedRide = null;
+          fetchRides();
+        }
+      } catch (error) {
+        addLog(`Error cancelling ride: ${error.message}`, 'error');
+      }
+    }
+
+    // Toggle Simulation
+    function toggleSimulation() {
+      if (isSimulating) {
+        stopSimulation();
+      } else {
+        startSimulation();
+      }
+    }
+
+    // Start Simulation
+    function startSimulation() {
+      if (!selectedRide || route.length === 0) {
+        addLog('Cannot start simulation - no route', 'error');
+        return;
+      }
+
+      isSimulating = true;
+      document.getElementById('btnSimulate').innerHTML = '⏸️ Stop Simulation';
+
+      const speed = parseInt(document.getElementById('speedSlider').value);
+
+      simulationInterval = setInterval(() => {
+        if (routeIndex >= route.length) {
+          stopSimulation();
+          addLog('Simulation complete - driver reached destination', 'success');
+          return;
+        }
+
+        sendDriverLocation(route[routeIndex]);
+        routeIndex++;
+      }, speed);
+
+      addLog('Simulation started', 'info');
+    }
+
+    // Stop Simulation
+    function stopSimulation() {
+      isSimulating = false;
+      document.getElementById('btnSimulate').innerHTML = '▶️ Start Simulation';
+      if (simulationInterval) {
+        clearInterval(simulationInterval);
+        simulationInterval = null;
+      }
+      addLog('Simulation stopped', 'info');
+    }
+
+    // Move Driver
+    function moveDriver(direction) {
+      if (!route.length) return;
+
+      if (direction === 'forward') {
+        routeIndex = Math.min(routeIndex + 1, route.length - 1);
+      } else {
+        routeIndex = Math.max(routeIndex - 1, 0);
+      }
+
+      sendDriverLocation(route[routeIndex]);
+    }
+
+    // Add Log
+    function addLog(message, type = 'info') {
+      const container = document.getElementById('logContainer');
+      const time = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${time}] ${message}`;
+      container.insertBefore(entry, container.firstChild);
+
+      // Keep only last 50 logs
+      while (container.children.length > 50) {
+        container.removeChild(container.lastChild);
+      }
+    }
+  </script>
+</body>
+</html>
