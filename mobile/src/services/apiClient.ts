@@ -1,124 +1,90 @@
-import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 import { API_URL } from '../config/environment';
 import { useUserStore } from '../store/userStore';
 import { authStorage } from '../store/storage';
 
-const apiClient = axios.create({
-  baseURL: API_URL,
-  timeout: 15000,
-  headers: {
+// Fetch-based API client
+const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
+  const accessToken = await authStorage.getAccessToken();
+
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-  },
-});
+    ...(options.headers as Record<string, string>),
+  };
 
-apiClient.interceptors.request.use(
-  async (config: InternalAxiosRequestConfig) => {
-    const accessToken = await authStorage.getAccessToken();
-
-    if (accessToken && config.headers) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
-    }
-
-    return config;
-  },
-  (error: AxiosError) => {
-    return Promise.reject(error);
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
   }
-);
 
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (value?: unknown) => void;
-  reject: (reason?: unknown) => void;
-}> = [];
-
-const processQueue = (error: Error | null, token: string | null = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers,
   });
-  failedQueue = [];
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    // Handle 401 - try to refresh token
+    if (response.status === 401) {
+      const refreshed = await tryRefreshToken();
+      if (refreshed) {
+        // Retry the original request
+        return fetchApi(endpoint, options);
+      }
+      useUserStore.getState().logout();
+    }
+    throw { response: { data, status: response.status } };
+  }
+
+  return { data };
 };
 
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+const tryRefreshToken = async (): Promise<boolean> => {
+  try {
+    const refreshToken = await authStorage.getRefreshToken();
+    if (!refreshToken) return false;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-            }
-            return apiClient(originalRequest);
-          })
-          .catch((err) => {
-            return Promise.reject(err);
-          });
-      }
+    const response = await fetch(`${API_URL}/api/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
 
-      originalRequest._retry = true;
-      isRefreshing = true;
+    if (!response.ok) return false;
 
-      const refreshToken = await authStorage.getRefreshToken();
-
-      if (!refreshToken) {
-        useUserStore.getState().logout();
-        return Promise.reject(error);
-      }
-
-      try {
-        const response = await axios.post(`${API_URL}/api/auth/refresh`, {
-          refreshToken,
-        });
-
-        const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-          response.data.data.tokens;
-
-        useUserStore.getState().updateTokens(newAccessToken, newRefreshToken);
-
-        if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        }
-
-        processQueue(null, newAccessToken);
-        return apiClient(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError as Error, null);
-        useUserStore.getState().logout();
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
-      }
-    }
-
-    return Promise.reject(error);
+    const data = await response.json();
+    const { accessToken, refreshToken: newRefreshToken } = data.data.tokens;
+    await useUserStore.getState().updateTokens(accessToken, newRefreshToken);
+    return true;
+  } catch {
+    return false;
   }
-);
+};
 
 export const api = {
   auth: {
     login: (data: { phone: string; name: string; role?: string; vehicle?: any }) =>
-      apiClient.post('/api/auth/login', data),
+      fetchApi('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
 
     refreshToken: (refreshToken: string) =>
-      apiClient.post('/api/auth/refresh', { refreshToken }),
+      fetchApi('/api/auth/refresh', {
+        method: 'POST',
+        body: JSON.stringify({ refreshToken }),
+      }),
 
     registerRider: (data: {
       vehicleType: string;
       vehicleModel: string;
       plateNumber: string;
       color?: string;
-    }) => apiClient.post('/api/auth/register-rider', data),
+    }) => fetchApi('/api/auth/register-rider', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
-    getProfile: () => apiClient.get('/api/auth/profile'),
+    getProfile: () => fetchApi('/api/auth/profile'),
   },
 
   rides: {
@@ -128,17 +94,23 @@ export const api = {
       dropoffLat: number;
       dropoffLng: number;
       vehicleType?: string;
-    }) => apiClient.post('/api/rides/calculate-fare', data),
+    }) => fetchApi('/api/rides/calculate-fare', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
     getHistory: (params?: {
       role?: 'customer' | 'rider';
       status?: string;
       limit?: number;
       page?: number;
-    }) => apiClient.get('/api/rides/history', { params }),
+    }) => {
+      const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
+      return fetchApi(`/api/rides/history${queryString}`);
+    },
 
-    getRideById: (rideId: string) => apiClient.get(`/api/rides/${rideId}`),
+    getRideById: (rideId: string) => fetchApi(`/api/rides/${rideId}`),
   },
 };
 
-export default apiClient;
+export default { api };

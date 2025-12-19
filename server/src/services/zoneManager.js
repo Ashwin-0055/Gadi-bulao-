@@ -19,8 +19,9 @@ class ZoneManager {
    * Subscribe a driver to a zone
    * @param {Socket} socket - Socket.io socket instance
    * @param {object} location - { latitude, longitude }
+   * @param {string} vehicleType - Driver's vehicle type (bike, auto, cab)
    */
-  subscribeToZone(socket, location) {
+  subscribeToZone(socket, location, vehicleType = null) {
     try {
       const { latitude, longitude } = location;
 
@@ -34,11 +35,12 @@ class ZoneManager {
       // Join the socket.io room
       socket.join(`zone:${zone}`);
 
-      // Store driver socket info
+      // Store driver socket info including vehicle type
       this.driverSockets.set(socket.id, {
         userId: socket.user.userId,
         zone,
-        location: { latitude, longitude }
+        location: { latitude, longitude },
+        vehicleType: vehicleType ? vehicleType.toLowerCase() : null
       });
 
       // Add driver to zone tracking
@@ -47,7 +49,7 @@ class ZoneManager {
       }
       this.zoneDrivers.get(zone).add(socket.id);
 
-      console.log(`📍 Driver ${socket.user.userId} subscribed to zone: ${zone} (${latitude}, ${longitude})`);
+      console.log(`📍 Driver ${socket.user.userId} (${vehicleType || 'unknown'}) subscribed to zone: ${zone} (${latitude}, ${longitude})`);
       console.log(`   Drivers in zone ${zone}: ${this.zoneDrivers.get(zone).size}`);
 
       return {
@@ -115,6 +117,32 @@ class ZoneManager {
     const zones = getNeighborZones(centerZone);
 
     return zones.filter(zone => this.zoneDrivers.has(zone) && this.zoneDrivers.get(zone).size > 0);
+  }
+
+  /**
+   * Get socket IDs of drivers with specific vehicle type in given zones
+   * @param {array} zones - Array of zone strings
+   * @param {string} vehicleType - Required vehicle type (bike, auto, cab)
+   * @returns {array} Array of socket IDs
+   */
+  getDriverSocketsByVehicleType(zones, vehicleType) {
+    const matchingSocketIds = [];
+    const normalizedVehicleType = vehicleType.toLowerCase();
+
+    zones.forEach(zone => {
+      const driversInZone = this.zoneDrivers.get(zone);
+      if (driversInZone) {
+        driversInZone.forEach(socketId => {
+          const driverInfo = this.driverSockets.get(socketId);
+          if (driverInfo && driverInfo.vehicleType === normalizedVehicleType) {
+            matchingSocketIds.push(socketId);
+          }
+        });
+      }
+    });
+
+    console.log(`🔍 Found ${matchingSocketIds.length} ${vehicleType} drivers in ${zones.length} zones`);
+    return matchingSocketIds;
   }
 
   /**

@@ -70,12 +70,12 @@ class SocketService {
         this.reattachEventHandlers();
       });
 
-      // Timeout
+      // Timeout - wait longer for Render free tier wake-up (50+ seconds)
       setTimeout(() => {
         if (!this.socket?.connected) {
           reject(new Error('Socket connection timeout'));
         }
-      }, 10000);
+      }, 65000);
     });
   }
 

@@ -91,7 +91,6 @@ export default function PhoneLoginScreen() {
     setError('');
 
     try {
-      // Remove any prefix - backend expects 10-digit number only
       const cleanPhone = phone.replace(/^\+91/, '').replace(/^91/, '').trim();
 
       const loginPayload: any = {

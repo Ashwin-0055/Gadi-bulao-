@@ -17,12 +17,14 @@ export const APP_NAME = 'Gadi Bulao';
 export const APP_VERSION = '1.0.0';
 
 // Socket Configuration
+// Note: Render free tier can take 50+ seconds to wake up from sleep
 export const SOCKET_CONFIG = {
   transports: ['websocket'],
   reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
-  timeout: 10000,
+  reconnectionAttempts: 10,
+  reconnectionDelay: 2000,
+  reconnectionDelayMax: 10000,
+  timeout: 60000, // 60 seconds timeout for Render wake-up
 };
 
 // Location Configuration

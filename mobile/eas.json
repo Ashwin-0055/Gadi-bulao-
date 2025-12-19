@@ -12,12 +12,14 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk",
-        "credentialsSource": "remote"
+        "credentialsSource": "remote",
+        "artifactName": "Gadi-Bulao-v1.0.0.apk"
       }
     },
     "production": {
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "artifactName": "Gadi-Bulao-v1.0.0.apk"
       }
     }
   },

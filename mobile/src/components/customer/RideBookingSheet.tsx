@@ -26,6 +26,7 @@ interface RideBookingSheetProps {
   onBookRide: (vehicleType: 'bike' | 'auto' | 'cab') => void;
   onCancelSearch?: () => void;
   isSearching: boolean;
+  isLoadingRoute?: boolean;
 }
 
 const VEHICLE_TYPES: VehicleType[] = [
@@ -59,6 +60,7 @@ const RideBookingSheet: React.FC<RideBookingSheetProps> = ({
   onBookRide,
   onCancelSearch,
   isSearching,
+  isLoadingRoute,
 }) => {
   const [selectedVehicle, setSelectedVehicle] = useState<'bike' | 'auto' | 'cab'>('auto');
   const snapPoints = useMemo(() => ['40%', '60%'], []);
@@ -92,8 +94,16 @@ const RideBookingSheet: React.FC<RideBookingSheetProps> = ({
       handleIndicatorStyle={styles.handleIndicator}
     >
       <BottomSheetView style={styles.contentContainer}>
+        {/* Loading Route Indicator */}
+        {isLoadingRoute && (
+          <View style={styles.loadingRoute}>
+            <ActivityIndicator size="small" color="#4CAF50" />
+            <Text style={styles.loadingRouteText}>Calculating prices...</Text>
+          </View>
+        )}
+
         {/* Distance & Duration */}
-        {distance && duration && (
+        {!isLoadingRoute && distance && duration && (
           <View style={styles.tripInfo}>
             <View style={styles.tripInfoItem}>
               <Ionicons name="navigate" size={16} color="#666" />
@@ -105,6 +115,14 @@ const RideBookingSheet: React.FC<RideBookingSheetProps> = ({
             </View>
           </View>
         )}
+
+        {/* Info Note */}
+        <View style={styles.infoNote}>
+          <Ionicons name="information-circle" size={16} color="#666" />
+          <Text style={styles.infoNoteText}>
+            Most drivers accept rides under 100 km for best availability
+          </Text>
+        </View>
 
         {/* Vehicle Type Selection */}
         <Text style={styles.sectionTitle}>Choose a ride</Text>
@@ -182,6 +200,35 @@ const styles = StyleSheet.create({
   },
   handleIndicator: {
     backgroundColor: '#ccc',
+  },
+  loadingRoute: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+    gap: 10,
+  },
+  loadingRouteText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  infoNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF8E1',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 16,
+    gap: 8,
+  },
+  infoNoteText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#666',
   },
   tripInfo: {
     flexDirection: 'row',

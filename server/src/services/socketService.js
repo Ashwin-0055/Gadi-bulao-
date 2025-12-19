@@ -103,8 +103,11 @@ class SocketService {
 
       await user.save();
 
+      // Get the vehicle type from user profile or request
+      const driverVehicleType = vehicleType || user.riderProfile?.vehicle?.type;
+
       // Automatically subscribe rider to their zone so they can receive ride requests
-      const zoneResult = zoneManager.subscribeToZone(socket, { latitude, longitude });
+      const zoneResult = zoneManager.subscribeToZone(socket, { latitude, longitude }, driverVehicleType);
 
       if (zoneResult.success) {
         // Update user's current zone in database
@@ -172,14 +175,21 @@ class SocketService {
    */
   async handleSubscribeToZone(socket, data) {
     try {
-      const { latitude, longitude } = data;
+      const { latitude, longitude, vehicleType } = data;
 
       if (!latitude || !longitude) {
         return socket.emit('error', { message: 'Location is required' });
       }
 
-      // Subscribe to zone
-      const result = zoneManager.subscribeToZone(socket, { latitude, longitude });
+      // Get user's vehicle type from database if not provided
+      let driverVehicleType = vehicleType;
+      if (!driverVehicleType) {
+        const user = await User.findById(socket.user.userId);
+        driverVehicleType = user?.riderProfile?.vehicle?.type;
+      }
+
+      // Subscribe to zone with vehicle type
+      const result = zoneManager.subscribeToZone(socket, { latitude, longitude }, driverVehicleType);
 
       if (result.success) {
         // Update user's current zone in database
@@ -264,10 +274,13 @@ class SocketService {
         longitude: pickup.longitude
       });
 
-      console.log(`🚕 New ride request: ${ride._id}`);
-      console.log(`   Broadcasting to ${zones.length} zones:`, zones);
+      console.log(`🚕 New ride request: ${ride._id} for ${vehicleType}`);
+      console.log(`   Checking ${zones.length} zones for ${vehicleType} drivers:`, zones);
 
-      // Broadcast to all relevant zones
+      // Get only drivers with matching vehicle type
+      const matchingDriverSocketIds = zoneManager.getDriverSocketsByVehicleType(zones, vehicleType);
+
+      // Broadcast only to drivers with matching vehicle type
       const rideData = {
         _id: ride._id.toString(),
         rideId: ride._id,
@@ -293,15 +306,19 @@ class SocketService {
         timestamp: new Date()
       };
 
-      zones.forEach(zone => {
-        this.io.to(`zone:${zone}`).emit('newRideRequest', rideData);
+      // Emit to each matching driver individually
+      matchingDriverSocketIds.forEach(socketId => {
+        this.io.to(socketId).emit('newRideRequest', rideData);
       });
+
+      console.log(`   Sent ride request to ${matchingDriverSocketIds.length} ${vehicleType} drivers`);
 
       // Send confirmation to customer
       socket.emit('rideRequested', {
         rideId: ride._id,
         status: 'SEARCHING',
         fare: fareDetails,
+        driversNotified: matchingDriverSocketIds.length,
         zonesNotified: zones.length
       });
 
@@ -631,6 +648,10 @@ class SocketService {
         return socket.emit('error', { message: 'Not authorized to cancel this ride' });
       }
 
+      // Store previous status to check if we need to broadcast to zones
+      const wasSearching = ride.status === 'SEARCHING';
+      const pickupCoords = ride.pickup?.coordinates?.coordinates;
+
       ride.status = 'CANCELLED';
       ride.cancelledBy = isCustomer ? 'customer' : 'rider';
       ride.cancellationReason = reason || 'No reason provided';
@@ -644,7 +665,29 @@ class SocketService {
         });
       }
 
-      // Notify other party
+      // If ride was still in SEARCHING status (no driver assigned yet),
+      // broadcast cancellation to all drivers in relevant zones
+      if (wasSearching && isCustomer && pickupCoords) {
+        const zones = zoneManager.getRelevantZones({
+          latitude: pickupCoords[1],
+          longitude: pickupCoords[0]
+        });
+
+        // Get all drivers with matching vehicle type
+        const matchingDriverSocketIds = zoneManager.getDriverSocketsByVehicleType(zones, ride.vehicleType);
+
+        // Notify all matching drivers that this ride is no longer available
+        matchingDriverSocketIds.forEach(socketId => {
+          this.io.to(socketId).emit('rideUnavailable', {
+            rideId: ride._id,
+            reason: 'Customer cancelled the request'
+          });
+        });
+
+        console.log(`📢 Ride cancellation broadcast to ${matchingDriverSocketIds.length} ${ride.vehicleType} drivers in ${zones.length} zones`);
+      }
+
+      // Notify other party (if ride was accepted and driver assigned)
       const rideMapping = this.activeRides.get(rideId);
       let otherSocketId = null;
 
@@ -664,7 +707,7 @@ class SocketService {
           reason: ride.cancellationReason
         });
         console.log(`📢 Ride cancellation sent to ${isCustomer ? 'rider' : 'customer'}: ${otherSocketId}`);
-      } else {
+      } else if (!wasSearching) {
         console.log(`⚠️  Could not find socket for ${isCustomer ? 'rider' : 'customer'} to notify cancellation`);
       }
 
@@ -673,7 +716,7 @@ class SocketService {
       // Clean up active ride mapping
       this.activeRides.delete(rideId);
 
-      console.log(`❌ Ride ${rideId} cancelled by ${isCustomer ? 'customer' : 'rider'}`);
+      console.log(`❌ Ride ${rideId} cancelled by ${isCustomer ? 'customer' : 'rider'}${wasSearching ? ' (was searching)' : ''}`);
 
     } catch (error) {
       console.error('❌ CancelRide error:', error);

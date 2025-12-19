@@ -42,6 +42,7 @@ export default function CustomerHome() {
   const [isSearching, setIsSearching] = useState(false);
   const [currentRideId, setCurrentRideId] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
+  const [isLoadingRoute, setIsLoadingRoute] = useState(false);
 
   // Get current location on mount
   useEffect(() => {
@@ -175,6 +176,7 @@ export default function CustomerHome() {
   const fetchRoute = async () => {
     if (!pickupLocation || !dropoffLocation) return;
 
+    setIsLoadingRoute(true);
     try {
       const routeResult = await getRoute(
         pickupLocation.latitude,
@@ -185,12 +187,13 @@ export default function CustomerHome() {
 
       if (routeResult) {
         setRoute(routeResult.coordinates);
-        setDistance(routeResult.distance); // in meters
-        setDuration(routeResult.duration); // in seconds
+        setDistance(routeResult.distance);
+        setDuration(routeResult.duration);
       }
     } catch (error) {
-      console.error('Error fetching route:', error);
       Alert.alert('Error', 'Failed to fetch route');
+    } finally {
+      setIsLoadingRoute(false);
     }
   };
 
@@ -243,10 +246,10 @@ export default function CustomerHome() {
   };
 
   const handleMenuPress = () => {
-    Alert.alert('Menu', 'Menu options', [
-      { text: 'Profile', onPress: () => {} },
-      { text: 'Ride History', onPress: () => {} },
-      { text: 'Settings', onPress: () => {} },
+    Alert.alert('Menu', 'Select an option', [
+      { text: 'Profile', onPress: () => router.push('/profile') },
+      { text: 'Ride History', onPress: () => router.push('/history') },
+      { text: 'Settings', onPress: () => router.push('/settings') },
       {
         text: 'Logout',
         style: 'destructive',
@@ -341,6 +344,7 @@ export default function CustomerHome() {
         onBookRide={handleBookRide}
         onCancelSearch={handleCancelSearch}
         isSearching={isSearching}
+        isLoadingRoute={isLoadingRoute}
       />
     </SafeAreaView>
   );

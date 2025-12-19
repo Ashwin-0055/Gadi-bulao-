@@ -1,8 +1,3 @@
-/**
- * Role Selection Screen
- * Choose between Customer or Rider mode
- */
-
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useUserStore } from '../src/store/userStore';
@@ -36,8 +31,13 @@ export default function RoleSelectionScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Welcome to Gadi Bulao</Text>
-        <Text style={styles.subtitle}>Choose your mode to continue</Text>
+        <Image
+          source={require('../assets/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.title}>Gadi Bulao</Text>
+        <Text style={styles.subtitle}>Your ride, your way</Text>
       </View>
 
       <View style={styles.optionsContainer}>
@@ -72,7 +72,7 @@ export default function RoleSelectionScreen() {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.footer}>Powered by MERN + Socket.io</Text>
+      <Text style={styles.footer}>Safe & Reliable Rides</Text>
     </View>
   );
 }
@@ -85,8 +85,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   header: {
-    marginBottom: 60,
+    marginBottom: 40,
     alignItems: 'center',
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 16,
+    borderRadius: 60,
   },
   title: {
     fontSize: 32,

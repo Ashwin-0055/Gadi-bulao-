@@ -5,8 +5,6 @@
  * - OSRM for routing/directions
  */
 
-import axios from 'axios';
-
 // Nominatim API (OpenStreetMap search & geocoding)
 const NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org';
 
@@ -51,23 +49,27 @@ export const searchPlaces = async (
   countryCode: string = 'in'
 ): Promise<SearchResult[]> => {
   try {
-    const response = await axios.get<NominatimResult[]>(
-      `${NOMINATIM_BASE_URL}/search`,
-      {
-        params: {
-          q: query,
-          format: 'json',
-          addressdetails: 1,
-          limit: 5,
-          countrycodes: countryCode,
-        },
-        headers: {
-          'User-Agent': 'GadiBulaoApp/1.0',
-        },
-      }
-    );
+    const params = new URLSearchParams({
+      q: query,
+      format: 'json',
+      addressdetails: '1',
+      limit: '5',
+      countrycodes: countryCode,
+    });
 
-    return response.data.map((result) => ({
+    const response = await fetch(`${NOMINATIM_BASE_URL}/search?${params}`, {
+      headers: {
+        'User-Agent': 'GadiBulaoApp/1.0',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Nominatim error: ${response.status}`);
+    }
+
+    const data: NominatimResult[] = await response.json();
+
+    return data.map((result) => ({
       id: result.place_id.toString(),
       latitude: parseFloat(result.lat),
       longitude: parseFloat(result.lon),
@@ -90,23 +92,27 @@ export const reverseGeocode = async (
   lon: number
 ): Promise<string> => {
   try {
-    const response = await axios.get<NominatimResult>(
-      `${NOMINATIM_BASE_URL}/reverse`,
-      {
-        params: {
-          lat,
-          lon,
-          format: 'json',
-          addressdetails: 1,
-        },
-        headers: {
-          'User-Agent': 'GadiBulaoApp/1.0',
-        },
-      }
-    );
+    const params = new URLSearchParams({
+      lat: lat.toString(),
+      lon: lon.toString(),
+      format: 'json',
+      addressdetails: '1',
+    });
 
-    if (response.data && response.data.display_name) {
-      return formatShortName(response.data);
+    const response = await fetch(`${NOMINATIM_BASE_URL}/reverse?${params}`, {
+      headers: {
+        'User-Agent': 'GadiBulaoApp/1.0',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Reverse geocode error: ${response.status}`);
+    }
+
+    const data: NominatimResult = await response.json();
+
+    if (data && data.display_name) {
+      return formatShortName(data);
     }
     return 'Unknown location';
   } catch (error) {
@@ -129,18 +135,23 @@ export const getRoute = async (
   endLon: number
 ): Promise<RouteResult | null> => {
   try {
-    const response = await axios.get(
-      `${OSRM_BASE_URL}/route/v1/driving/${startLon},${startLat};${endLon},${endLat}`,
-      {
-        params: {
-          overview: 'full',
-          geometries: 'geojson',
-        },
-      }
+    const params = new URLSearchParams({
+      overview: 'full',
+      geometries: 'geojson',
+    });
+
+    const response = await fetch(
+      `${OSRM_BASE_URL}/route/v1/driving/${startLon},${startLat};${endLon},${endLat}?${params}`
     );
 
-    if (response.data.code === 'Ok' && response.data.routes.length > 0) {
-      const route = response.data.routes[0];
+    if (!response.ok) {
+      throw new Error(`OSRM error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.code === 'Ok' && data.routes.length > 0) {
+      const route = data.routes[0];
 
       // Convert GeoJSON coordinates to our format
       const coordinates = route.geometry.coordinates.map(

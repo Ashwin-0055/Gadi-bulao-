@@ -74,6 +74,12 @@ export default function RiderHome() {
       // Play notification sound here
     });
 
+    // Listen for ride unavailable (customer cancelled or another driver accepted)
+    socketService.onRideUnavailable((data) => {
+      console.log('🚫 Ride unavailable:', data.rideId);
+      removeRideRequest(data.rideId);
+    });
+
     // Listen for zone subscription confirmation
     socketService.onZoneSubscribed((data) => {
       setCurrentZone(data.zone);
@@ -269,9 +275,13 @@ export default function RiderHome() {
       return;
     }
 
+    // Include vehicle type so server can filter ride requests appropriately
+    const vehicleType = user?.riderProfile?.vehicle?.type;
+
     socketService.goOnDuty({
       latitude: currentLocation.latitude,
       longitude: currentLocation.longitude,
+      vehicleType: vehicleType,
     });
     // Zone will be set when server responds via dutyStatusChanged event
   };
@@ -346,12 +356,13 @@ export default function RiderHome() {
   };
 
   const handleMenuPress = () => {
-    Alert.alert('Menu', 'Menu options', [
-      { text: 'Profile', onPress: () => {} },
-      { text: 'Earnings', onPress: () => {} },
-      { text: 'History', onPress: () => {} },
+    Alert.alert('Menu', 'Select an option', [
+      { text: 'Profile', onPress: () => router.push('/profile') },
+      { text: 'Ride History', onPress: () => router.push('/history') },
+      { text: 'Settings', onPress: () => router.push('/settings') },
       {
         text: 'Logout',
+        style: 'destructive',
         onPress: () => {
           Alert.alert('Logout', 'Are you sure?', [
             { text: 'Cancel', style: 'cancel' },
@@ -359,7 +370,6 @@ export default function RiderHome() {
               text: 'Logout',
               style: 'destructive',
               onPress: async () => {
-                // Go off duty first if on duty
                 if (isOnDuty) {
                   setOnDuty(false);
                 }
