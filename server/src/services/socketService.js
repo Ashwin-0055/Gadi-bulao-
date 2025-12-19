@@ -481,6 +481,11 @@ class SocketService {
     try {
       const { rideId, otp } = data;
 
+      // OTP is required
+      if (!otp) {
+        return socket.emit('otpError', { message: 'OTP is required to start the ride' });
+      }
+
       // Get ride to verify OTP
       const ride = await Ride.findById(rideId);
 
@@ -488,19 +493,20 @@ class SocketService {
         return socket.emit('error', { message: 'Ride not found' });
       }
 
-      // Verify start OTP if provided
-      if (otp && ride.otp?.startOtp) {
-        if (otp !== ride.otp.startOtp) {
-          return socket.emit('otpError', { message: 'Invalid OTP. Please ask the customer for the correct code.' });
-        }
+      // Verify start OTP - REQUIRED
+      if (!ride.otp?.startOtp) {
+        return socket.emit('error', { message: 'No OTP found for this ride. Please contact support.' });
       }
 
-      // Update ride status
+      if (otp !== ride.otp.startOtp) {
+        console.log(`❌ Invalid OTP for ride ${rideId}: entered ${otp}, expected ${ride.otp.startOtp}`);
+        return socket.emit('otpError', { message: 'Invalid OTP. Please ask the customer for the correct code.' });
+      }
+
+      // OTP verified - Update ride status
       ride.status = 'STARTED';
       ride.timestamps.startedAt = new Date();
-      if (ride.otp) {
-        ride.otp.startOtpVerified = true;
-      }
+      ride.otp.startOtpVerified = true;
       await ride.save();
 
       const rideMapping = this.activeRides.get(rideId);
@@ -513,7 +519,7 @@ class SocketService {
 
       // Emit OTP verified confirmation event
       socket.emit('rideStartedConfirm', { rideId, status: 'STARTED' });
-      console.log(`🚗 Ride ${rideId} started with OTP verified`);
+      console.log(`🚗 Ride ${rideId} started - OTP verified successfully`);
 
     } catch (error) {
       console.error('❌ RideStarted error:', error);
@@ -528,6 +534,11 @@ class SocketService {
     try {
       const { rideId, otp } = data;
 
+      // OTP is required
+      if (!otp) {
+        return socket.emit('otpError', { message: 'OTP is required to complete the ride' });
+      }
+
       // Get ride to verify OTP
       const ride = await Ride.findById(rideId);
 
@@ -535,19 +546,20 @@ class SocketService {
         return socket.emit('error', { message: 'Ride not found' });
       }
 
-      // Verify end OTP if provided
-      if (otp && ride.otp?.endOtp) {
-        if (otp !== ride.otp.endOtp) {
-          return socket.emit('otpError', { message: 'Invalid OTP. Please ask the customer for the correct code.' });
-        }
+      // Verify end OTP - REQUIRED
+      if (!ride.otp?.endOtp) {
+        return socket.emit('error', { message: 'No OTP found for this ride. Please contact support.' });
       }
 
-      // Update ride status
+      if (otp !== ride.otp.endOtp) {
+        console.log(`❌ Invalid OTP for ride ${rideId}: entered ${otp}, expected ${ride.otp.endOtp}`);
+        return socket.emit('otpError', { message: 'Invalid OTP. Please ask the customer for the correct code.' });
+      }
+
+      // OTP verified - Update ride status
       ride.status = 'COMPLETED';
       ride.timestamps.completedAt = new Date();
-      if (ride.otp) {
-        ride.otp.endOtpVerified = true;
-      }
+      ride.otp.endOtpVerified = true;
       await ride.save();
 
       // Update rider stats and earnings
