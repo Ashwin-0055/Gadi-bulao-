@@ -1,9 +1,17 @@
 const User = require('../models/User');
 const { generateTokenPair, verifyRefreshToken } = require('../utils/jwt');
-const { createClerkClient } = require('@clerk/clerk-sdk-node');
+const admin = require('firebase-admin');
 
-// Initialize Clerk
-const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+// Initialize Firebase Admin
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    }),
+  });
+}
 
 /**
  * Phone-based login/signup
@@ -123,12 +131,12 @@ const phoneLogin = async (req, res) => {
 };
 
 /**
- * Clerk Sync - Sync existing Clerk user with our database
- * Used when a user logs in via Clerk OTP
+ * Firebase Sync - Sync existing Firebase user with our database
+ * Used when a user logs in via Firebase OTP
  */
-const clerkSync = async (req, res) => {
+const firebaseSync = async (req, res) => {
   try {
-    const { phone, role, clerkToken } = req.body;
+    const { phone, role, firebaseToken, firebaseUid } = req.body;
 
     if (!phone) {
       return res.status(400).json({
@@ -137,13 +145,17 @@ const clerkSync = async (req, res) => {
       });
     }
 
-    // Verify Clerk token if provided
-    if (clerkToken) {
+    // Verify Firebase token
+    if (firebaseToken) {
       try {
-        await clerk.verifyToken(clerkToken);
+        const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
+        console.log('[Auth] Firebase token verified for:', decodedToken.phone_number || decodedToken.uid);
       } catch (err) {
-        console.log('[Auth] Clerk token verification failed:', err.message);
-        // Continue anyway - token might be session-based
+        console.log('[Auth] Firebase token verification failed:', err.message);
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid Firebase token'
+        });
       }
     }
 
@@ -158,6 +170,11 @@ const clerkSync = async (req, res) => {
       });
     }
 
+    // Update Firebase UID if not set
+    if (firebaseUid && !user.firebaseUid) {
+      user.firebaseUid = firebaseUid;
+    }
+
     // Update active role if provided
     if (role && user.role.includes(role)) {
       user.activeRole = role;
@@ -168,7 +185,7 @@ const clerkSync = async (req, res) => {
     user.refreshToken = tokens.refreshToken;
     await user.save();
 
-    console.log('[Auth] Clerk sync successful:', phone);
+    console.log('[Auth] Firebase sync successful:', phone);
 
     res.status(200).json({
       success: true,
@@ -188,7 +205,7 @@ const clerkSync = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('[Error] Clerk sync:', error.message);
+    console.error('[Error] Firebase sync:', error.message);
     res.status(500).json({
       success: false,
       message: 'Login failed',
@@ -198,12 +215,12 @@ const clerkSync = async (req, res) => {
 };
 
 /**
- * Clerk Register - Register new user via Clerk
- * Used when a new user signs up via Clerk OTP
+ * Firebase Register - Register new user via Firebase
+ * Used when a new user signs up via Firebase OTP
  */
-const clerkRegister = async (req, res) => {
+const firebaseRegister = async (req, res) => {
   try {
-    const { phone, name, role, clerkToken, vehicle } = req.body;
+    const { phone, name, role, firebaseToken, firebaseUid, vehicle } = req.body;
 
     if (!phone || !name) {
       return res.status(400).json({
@@ -212,13 +229,17 @@ const clerkRegister = async (req, res) => {
       });
     }
 
-    // Verify Clerk token if provided
-    if (clerkToken) {
+    // Verify Firebase token
+    if (firebaseToken) {
       try {
-        await clerk.verifyToken(clerkToken);
+        const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
+        console.log('[Auth] Firebase token verified for:', decodedToken.phone_number || decodedToken.uid);
       } catch (err) {
-        console.log('[Auth] Clerk token verification failed:', err.message);
-        // Continue anyway - token might be session-based
+        console.log('[Auth] Firebase token verification failed:', err.message);
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid Firebase token'
+        });
       }
     }
 
@@ -244,11 +265,16 @@ const clerkRegister = async (req, res) => {
         user.activeRole = 'rider';
       }
 
+      // Update Firebase UID
+      if (firebaseUid) {
+        user.firebaseUid = firebaseUid;
+      }
+
       const tokens = generateTokenPair(user._id, user.phone, user.activeRole);
       user.refreshToken = tokens.refreshToken;
       await user.save();
 
-      console.log('[Auth] Clerk user updated:', phone);
+      console.log('[Auth] Firebase user updated:', phone);
 
       return res.status(200).json({
         success: true,
@@ -280,6 +306,7 @@ const clerkRegister = async (req, res) => {
     user = new User({
       phone,
       name,
+      firebaseUid,
       role: role ? [role] : ['customer'],
       activeRole: role || 'customer'
     });
@@ -304,7 +331,7 @@ const clerkRegister = async (req, res) => {
     user.refreshToken = tokens.refreshToken;
     await user.save();
 
-    console.log('[Auth] Clerk new user registered:', phone);
+    console.log('[Auth] Firebase new user registered:', phone);
 
     res.status(201).json({
       success: true,
@@ -324,7 +351,7 @@ const clerkRegister = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('[Error] Clerk register:', error.message);
+    console.error('[Error] Firebase register:', error.message);
     res.status(500).json({
       success: false,
       message: 'Registration failed',
@@ -785,8 +812,8 @@ const deleteUserById = async (req, res) => {
 
 module.exports = {
   phoneLogin,
-  clerkSync,
-  clerkRegister,
+  firebaseSync,
+  firebaseRegister,
   refreshToken,
   switchRole,
   registerRider,

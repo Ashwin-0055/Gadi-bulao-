@@ -1,5 +1,5 @@
 /**
- * Phone Login Screen with Clerk OTP Authentication
+ * Phone Login Screen with Firebase OTP Authentication
  */
 
 import { useState, useEffect } from 'react';
@@ -16,12 +16,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useSignUp, useSignIn, useAuth } from '@clerk/clerk-expo';
+import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { PhoneInput } from '../../src/components/shared/PhoneInput';
 import { CustomButton } from '../../src/components/shared/CustomButton';
 import { Colors } from '../../src/constants/colors';
 import { api } from '../../src/services/apiClient';
 import { useUserStore } from '../../src/store/userStore';
+import { formatPhoneForFirebase } from '../../src/config/firebase';
 
 type Step = 'phone' | 'otp' | 'name' | 'vehicle';
 
@@ -29,11 +30,6 @@ export default function PhoneLoginScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ role?: string }>();
   const role = (params.role || 'customer') as 'customer' | 'rider';
-
-  // Clerk hooks
-  const { signUp, isLoaded: signUpLoaded, setActive } = useSignUp();
-  const { signIn, isLoaded: signInLoaded } = useSignIn();
-  const { isSignedIn, getToken } = useAuth();
 
   // State
   const [phone, setPhone] = useState('');
@@ -44,6 +40,9 @@ export default function PhoneLoginScreen() {
   const [error, setError] = useState('');
   const [isNewUser, setIsNewUser] = useState(false);
 
+  // Firebase confirmation result
+  const [confirm, setConfirm] = useState<FirebaseAuthTypes.ConfirmationResult | null>(null);
+
   // Vehicle details for riders
   const [vehicleType, setVehicleType] = useState<'bike' | 'auto' | 'cab'>('cab');
   const [vehicleModel, setVehicleModel] = useState('');
@@ -52,20 +51,19 @@ export default function PhoneLoginScreen() {
 
   const login = useUserStore((state) => state.login);
 
-  // Format phone for Clerk (E.164 format)
-  const formatPhoneForClerk = (phoneNumber: string) => {
-    const cleaned = phoneNumber.replace(/\D/g, '');
-    // Add +91 for India
-    if (cleaned.length === 10) {
-      return `+91${cleaned}`;
-    }
-    if (cleaned.startsWith('91') && cleaned.length === 12) {
-      return `+${cleaned}`;
-    }
-    return `+91${cleaned}`;
-  };
+  // Handle auth state changes
+  useEffect(() => {
+    const unsubscribe = auth().onAuthStateChanged(async (user) => {
+      if (user && step === 'otp') {
+        // User signed in via Firebase, now sync with backend
+        await syncWithBackend(user);
+      }
+    });
 
-  // Send OTP
+    return unsubscribe;
+  }, [step]);
+
+  // Send OTP via Firebase
   const handleSendOTP = async () => {
     if (phone.length < 10) {
       setError('Please enter a valid 10-digit phone number');
@@ -76,44 +74,25 @@ export default function PhoneLoginScreen() {
     setError('');
 
     try {
-      const formattedPhone = formatPhoneForClerk(phone);
+      const formattedPhone = formatPhoneForFirebase(phone);
+      console.log('Sending OTP to:', formattedPhone);
 
-      // First try to sign in (existing user)
-      try {
-        const signInAttempt = await signIn?.create({
-          identifier: formattedPhone,
-        });
-
-        // Prepare phone verification
-        await signIn?.prepareFirstFactor({
-          strategy: 'phone_code',
-          phoneNumberId: signInAttempt?.supportedFirstFactors?.find(
-            (factor: any) => factor.strategy === 'phone_code'
-          )?.phoneNumberId,
-        });
-
-        setIsNewUser(false);
-        setStep('otp');
-      } catch (signInError: any) {
-        // User doesn't exist, create new account
-        if (signInError?.errors?.[0]?.code === 'form_identifier_not_found') {
-          await signUp?.create({
-            phoneNumber: formattedPhone,
-          });
-
-          await signUp?.preparePhoneNumberVerification({
-            strategy: 'phone_code',
-          });
-
-          setIsNewUser(true);
-          setStep('otp');
-        } else {
-          throw signInError;
-        }
-      }
+      const confirmation = await auth().signInWithPhoneNumber(formattedPhone);
+      setConfirm(confirmation);
+      setStep('otp');
+      Alert.alert('OTP Sent', `Verification code sent to ${formattedPhone}`);
     } catch (err: any) {
       console.error('Send OTP error:', err);
-      const errorMessage = err?.errors?.[0]?.message || 'Failed to send OTP. Please try again.';
+      let errorMessage = 'Failed to send OTP. Please try again.';
+
+      if (err.code === 'auth/invalid-phone-number') {
+        errorMessage = 'Invalid phone number format.';
+      } else if (err.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many requests. Please try again later.';
+      } else if (err.code === 'auth/quota-exceeded') {
+        errorMessage = 'SMS quota exceeded. Please try again later.';
+      }
+
       setError(errorMessage);
       Alert.alert('Error', errorMessage);
     } finally {
@@ -128,43 +107,74 @@ export default function PhoneLoginScreen() {
       return;
     }
 
+    if (!confirm) {
+      setError('Please request OTP first');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      if (isNewUser) {
-        // New user - verify signup
-        const result = await signUp?.attemptPhoneNumberVerification({
-          code: otp,
-        });
+      const credential = await confirm.confirm(otp);
 
-        if (result?.status === 'complete') {
-          await setActive?.({ session: result.createdSessionId });
-          setStep('name'); // New user needs to enter name
-        } else {
-          throw new Error('Verification incomplete');
-        }
-      } else {
-        // Existing user - verify signin
-        const result = await signIn?.attemptFirstFactor({
-          strategy: 'phone_code',
-          code: otp,
-        });
-
-        if (result?.status === 'complete') {
-          await setActive?.({ session: result.createdSessionId });
-          // Existing user - sync with backend and go to home
-          await syncWithBackend();
-        } else {
-          throw new Error('Verification incomplete');
-        }
+      if (credential.user) {
+        // Firebase verification successful
+        // The onAuthStateChanged will handle syncing with backend
+        console.log('Firebase auth successful:', credential.user.phoneNumber);
       }
     } catch (err: any) {
       console.error('Verify OTP error:', err);
-      const errorMessage = err?.errors?.[0]?.message || 'Invalid OTP. Please try again.';
+      let errorMessage = 'Invalid OTP. Please try again.';
+
+      if (err.code === 'auth/invalid-verification-code') {
+        errorMessage = 'Invalid verification code.';
+      } else if (err.code === 'auth/code-expired') {
+        errorMessage = 'OTP expired. Please request a new one.';
+      }
+
       setError(errorMessage);
       Alert.alert('Error', errorMessage);
-    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Sync Firebase user with backend
+  const syncWithBackend = async (firebaseUser: FirebaseAuthTypes.User) => {
+    setLoading(true);
+    try {
+      const idToken = await firebaseUser.getIdToken();
+      const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+
+      const response = await api.auth.firebaseSync({
+        phone: cleanPhone,
+        role,
+        firebaseToken: idToken,
+        firebaseUid: firebaseUser.uid,
+      });
+
+      if (response.data?.success) {
+        const { tokens, user } = response.data.data;
+        await login(tokens, user);
+
+        setTimeout(() => {
+          if (user.activeRole === 'customer') {
+            router.replace('/customer/home');
+          } else {
+            router.replace('/rider/home');
+          }
+        }, 100);
+      } else {
+        // User exists in Firebase but not in our backend - need to register
+        setIsNewUser(true);
+        setStep('name');
+        setLoading(false);
+      }
+    } catch (err: any) {
+      console.error('Sync error:', err);
+      // If sync fails, treat as new user
+      setIsNewUser(true);
+      setStep('name');
       setLoading(false);
     }
   };
@@ -196,45 +206,6 @@ export default function PhoneLoginScreen() {
     return true;
   };
 
-  // Sync existing user with backend
-  const syncWithBackend = async () => {
-    setLoading(true);
-    try {
-      const token = await getToken();
-      const cleanPhone = phone.replace(/\D/g, '').slice(-10);
-
-      const response = await api.auth.clerkSync({
-        phone: cleanPhone,
-        role,
-        clerkToken: token,
-      });
-
-      if (response.data?.success) {
-        const { tokens, user } = response.data.data;
-        await login(tokens, user);
-
-        setTimeout(() => {
-          if (user.activeRole === 'customer') {
-            router.replace('/customer/home');
-          } else {
-            router.replace('/rider/home');
-          }
-        }, 100);
-      } else {
-        // User exists in Clerk but not in our backend - need to register
-        setIsNewUser(true);
-        setStep('name');
-      }
-    } catch (err: any) {
-      console.error('Sync error:', err);
-      // If sync fails, treat as new user
-      setIsNewUser(true);
-      setStep('name');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Complete registration for new users
   const completeRegistration = async () => {
     if (role === 'rider' && !validateVehicleDetails()) {
@@ -245,14 +216,20 @@ export default function PhoneLoginScreen() {
     setError('');
 
     try {
-      const token = await getToken();
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        throw new Error('No authenticated user');
+      }
+
+      const idToken = await currentUser.getIdToken();
       const cleanPhone = phone.replace(/\D/g, '').slice(-10);
 
       const registerPayload: any = {
         phone: cleanPhone,
         name: name.trim(),
         role,
-        clerkToken: token,
+        firebaseToken: idToken,
+        firebaseUid: currentUser.uid,
       };
 
       if (role === 'rider') {
@@ -264,7 +241,7 @@ export default function PhoneLoginScreen() {
         };
       }
 
-      const response = await api.auth.clerkRegister(registerPayload);
+      const response = await api.auth.firebaseRegister(registerPayload);
 
       if (response.data?.success) {
         const { tokens, user } = response.data.data;
@@ -328,6 +305,7 @@ export default function PhoneLoginScreen() {
     } else if (step === 'otp') {
       setStep('phone');
       setOtp('');
+      setConfirm(null);
     } else {
       router.back();
     }
@@ -377,15 +355,6 @@ export default function PhoneLoginScreen() {
         return false;
     }
   };
-
-  if (!signUpLoaded || !signInLoaded) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    );
-  }
 
   return (
     <KeyboardAvoidingView

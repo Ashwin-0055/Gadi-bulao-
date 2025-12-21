@@ -86,21 +86,22 @@ export const api = {
 
     getProfile: () => fetchApi('/api/auth/profile'),
 
-    // Clerk authentication endpoints
-    clerkSync: (data: { phone: string; role: string; clerkToken: string | null }) =>
-      fetchApi('/api/auth/clerk-sync', {
+    // Firebase authentication endpoints
+    firebaseSync: (data: { phone: string; role: string; firebaseToken: string; firebaseUid: string }) =>
+      fetchApi('/api/auth/firebase-sync', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
 
-    clerkRegister: (data: {
+    firebaseRegister: (data: {
       phone: string;
       name: string;
       role: string;
-      clerkToken: string | null;
+      firebaseToken: string;
+      firebaseUid: string;
       vehicle?: any;
     }) =>
-      fetchApi('/api/auth/clerk-register', {
+      fetchApi('/api/auth/firebase-register', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
