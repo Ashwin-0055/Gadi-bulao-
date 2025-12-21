@@ -34,11 +34,13 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files
 app.use('/static', express.static(path.join(__dirname, 'public')));
 
-// Request logging
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`);
-  next();
-});
+// Request logging (disabled in production)
+if (process.env.NODE_ENV === 'development') {
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.path}`);
+    next();
+  });
+}
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -77,7 +79,7 @@ app.use((req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error('❌ Error:', err);
+  console.error('[Error]', err.message);
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal server error',
@@ -107,34 +109,33 @@ const startServer = async () => {
     // Start server
     server.listen(PORT, () => {
       console.log('\n========================================');
-      console.log('🚀 UBER CLONE SERVER');
+      console.log('GADI BULAO SERVER');
       console.log('========================================');
-      console.log(`✅ Server running on port ${PORT}`);
-      console.log(`✅ Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`✅ Health check: http://localhost:${PORT}/health`);
-      console.log(`✅ Socket.io ready for connections`);
+      console.log(`Server running on port ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`Health check: http://localhost:${PORT}/health`);
       console.log('========================================\n');
     });
 
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error('[Error] Failed to start server:', error.message);
     process.exit(1);
   }
 };
 
 // Handle graceful shutdown
 process.on('SIGTERM', async () => {
-  console.log('⚠️  SIGTERM received, shutting down gracefully...');
+  console.log('SIGTERM received, shutting down...');
   server.close(() => {
-    console.log('✅ Server closed');
+    console.log('Server closed');
     process.exit(0);
   });
 });
 
 process.on('SIGINT', async () => {
-  console.log('\n⚠️  SIGINT received, shutting down gracefully...');
+  console.log('\nSIGINT received, shutting down...');
   server.close(() => {
-    console.log('✅ Server closed');
+    console.log('Server closed');
     process.exit(0);
   });
 });

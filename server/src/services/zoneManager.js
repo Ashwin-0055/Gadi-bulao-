@@ -12,7 +12,7 @@ class ZoneManager {
     // Map of zone -> Set of socketIds
     this.zoneDrivers = new Map();
 
-    console.log('✅ ZoneManager initialized');
+    // ZoneManager initialized
   }
 
   /**
@@ -49,8 +49,7 @@ class ZoneManager {
       }
       this.zoneDrivers.get(zone).add(socket.id);
 
-      console.log(`📍 Driver ${socket.user.userId} (${vehicleType || 'unknown'}) subscribed to zone: ${zone} (${latitude}, ${longitude})`);
-      console.log(`   Drivers in zone ${zone}: ${this.zoneDrivers.get(zone).size}`);
+      console.log(`[Zone] Driver subscribed to ${zone}`);
 
       return {
         success: true,
@@ -59,7 +58,7 @@ class ZoneManager {
       };
 
     } catch (error) {
-      console.error('❌ Zone subscription error:', error);
+      console.error('[Error] Zone subscription:', error.message);
       return {
         success: false,
         error: error.message
@@ -94,11 +93,11 @@ class ZoneManager {
         // Remove driver socket info
         this.driverSockets.delete(socket.id);
 
-        console.log(`📍 Driver ${socket.user.userId} unsubscribed from zone: ${zone}`);
+        // Driver unsubscribed from zone
       }
 
     } catch (error) {
-      console.error('❌ Zone unsubscription error:', error);
+      console.error('[Error] Zone unsubscription:', error.message);
     }
   }
 
@@ -141,7 +140,7 @@ class ZoneManager {
       }
     });
 
-    console.log(`🔍 Found ${matchingSocketIds.length} ${vehicleType} drivers in ${zones.length} zones`);
+    // Found matching drivers
     return matchingSocketIds;
   }
 

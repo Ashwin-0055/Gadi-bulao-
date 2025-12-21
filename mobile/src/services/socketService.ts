@@ -27,7 +27,6 @@ class SocketService {
       }
 
       if (this.socket?.connected) {
-        console.log('Socket already connected');
         resolve();
         return;
       }
@@ -42,31 +41,28 @@ class SocketService {
 
       // Connection event handlers
       this.socket.on('connect', () => {
-        console.log('✅ Socket connected:', this.socket?.id);
         this.attachPendingListeners();
         resolve();
       });
 
-      this.socket.on('connected', (data) => {
-        console.log('📡 Server acknowledged connection:', data);
+      this.socket.on('connected', () => {
+        // Server acknowledged connection
       });
 
       this.socket.on('connect_error', (error) => {
-        console.error('❌ Socket connection error:', error.message);
         reject(error);
       });
 
-      this.socket.on('error', (error) => {
-        console.error('❌ Socket error:', error);
+      this.socket.on('error', () => {
+        // Socket error
       });
 
-      this.socket.on('disconnect', (reason) => {
-        console.log('🔌 Socket disconnected:', reason);
+      this.socket.on('disconnect', () => {
+        // Socket disconnected
       });
 
       // Re-attach event handlers on reconnect
       this.socket.on('reconnect', () => {
-        console.log('🔄 Socket reconnected');
         this.reattachEventHandlers();
       });
 
@@ -87,7 +83,6 @@ class SocketService {
       this.socket.disconnect();
       this.socket = null;
       this.eventHandlers.clear();
-      console.log('🔌 Socket disconnected manually');
     }
   }
 
@@ -96,12 +91,9 @@ class SocketService {
    */
   emit(event: string, data?: any): void {
     if (!this.socket?.connected) {
-      console.warn('⚠️  Socket not connected, cannot emit:', event);
       return;
     }
-
     this.socket.emit(event, data);
-    console.log(`📤 Emitted: ${event}`, data);
   }
 
   /**
@@ -116,14 +108,12 @@ class SocketService {
 
     if (!this.socket) {
       // Queue listener to be attached when socket connects
-      console.log(`⏳ Queuing listener for: ${event} (socket not ready)`);
       this.pendingListeners.push({ event, callback });
       return;
     }
 
     // Attach to socket
     this.socket.on(event, callback);
-    console.log(`👂 Listening to: ${event}`);
   }
 
   /**
@@ -151,7 +141,7 @@ class SocketService {
       this.eventHandlers.delete(event);
     }
 
-    console.log(`🔇 Stopped listening to: ${event}`);
+    // Stopped listening to event
   }
 
   /**
@@ -160,10 +150,8 @@ class SocketService {
   private attachPendingListeners(): void {
     if (this.pendingListeners.length === 0) return;
 
-    console.log(`📎 Attaching ${this.pendingListeners.length} pending listeners`);
     this.pendingListeners.forEach(({ event, callback }) => {
       this.socket?.on(event, callback);
-      console.log(`👂 Attached queued listener: ${event}`);
     });
     this.pendingListeners = [];
   }
@@ -177,7 +165,6 @@ class SocketService {
         this.socket?.on(event, callback);
       });
     });
-    console.log('🔄 Event handlers reattached');
   }
 
   /**

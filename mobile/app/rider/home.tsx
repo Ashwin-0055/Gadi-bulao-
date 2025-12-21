@@ -66,10 +66,6 @@ export default function RiderHome() {
             earnings: serverUser.riderProfile.earnings || 0,
             rating: serverUser.riderProfile.rating || 5.0,
           });
-          console.log('📊 Refreshed rider stats from server:', {
-            totalRides: serverUser.riderProfile.totalRides,
-            earnings: serverUser.riderProfile.earnings,
-          });
         }
       }
     } catch (error) {
@@ -125,7 +121,6 @@ export default function RiderHome() {
 
     // Listen for ride unavailable (customer cancelled or another driver accepted)
     socketService.onRideUnavailable((data) => {
-      console.log('🚫 Ride unavailable:', data.rideId);
       removeRideRequest(data.rideId);
     });
 

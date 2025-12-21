@@ -15,7 +15,7 @@ class SocketService {
     // Map of rideId -> { customerSocketId, riderSocketId }
     this.activeRides = new Map();
 
-    console.log('✅ SocketService initialized');
+    // SocketService initialized
   }
 
   /**
@@ -23,14 +23,14 @@ class SocketService {
    */
   initialize(io) {
     this.io = io;
-    console.log('✅ Socket.io instance attached to SocketService');
+    // Socket.io instance attached
   }
 
   /**
    * Handle new socket connection
    */
   handleConnection(socket) {
-    console.log(`🔌 New connection: ${socket.id} (User: ${socket.user.userId})`);
+    console.log(`[Socket] Connected: ${socket.id}`);
 
     // Store socket mapping
     this.userSockets.set(socket.user.userId, socket.id);
@@ -114,11 +114,9 @@ class SocketService {
         user.riderProfile.currentZone = zoneResult.zone;
         await user.save();
 
-        console.log(`🚗 Driver ${socket.user.userId} is now ON DUTY at (${latitude}, ${longitude})`);
-        console.log(`   Subscribed to zone: ${zoneResult.zone} (${zoneResult.driversInZone} drivers in zone)`);
+        console.log(`[Driver] ${socket.user.userId} on duty, zone: ${zoneResult.zone}`);
       } else {
-        console.log(`🚗 Driver ${socket.user.userId} is now ON DUTY at (${latitude}, ${longitude})`);
-        console.log(`   Warning: Failed to subscribe to zone`);
+        console.log(`[Driver] ${socket.user.userId} on duty (zone subscription failed)`);
       }
 
       socket.emit('dutyStatusChanged', {
@@ -136,7 +134,7 @@ class SocketService {
       }
 
     } catch (error) {
-      console.error('❌ GoOnDuty error:', error);
+      console.error('[Error] GoOnDuty:', error.message);
       socket.emit('error', { message: 'Failed to go on duty', error: error.message });
     }
   }
@@ -158,14 +156,14 @@ class SocketService {
       // Unsubscribe from zone
       zoneManager.unsubscribeFromZone(socket);
 
-      console.log(`🚗 Driver ${socket.user.userId} is now OFF DUTY`);
+      console.log(`[Driver] ${socket.user.userId} off duty`);
 
       socket.emit('dutyStatusChanged', {
         isOnDuty: false
       });
 
     } catch (error) {
-      console.error('❌ GoOffDuty error:', error);
+      console.error('[Error] GoOffDuty:', error.message);
       socket.emit('error', { message: 'Failed to go off duty', error: error.message });
     }
   }
@@ -210,7 +208,7 @@ class SocketService {
       }
 
     } catch (error) {
-      console.error('❌ SubscribeToZone error:', error);
+      console.error('[Error] SubscribeToZone:', error.message);
       socket.emit('error', { message: 'Failed to subscribe to zone', error: error.message });
     }
   }
@@ -274,8 +272,7 @@ class SocketService {
         longitude: pickup.longitude
       });
 
-      console.log(`🚕 New ride request: ${ride._id} for ${vehicleType}`);
-      console.log(`   Checking ${zones.length} zones for ${vehicleType} drivers:`, zones);
+      console.log(`[Ride] New request: ${ride._id}, type: ${vehicleType}`);
 
       // Get only drivers with matching vehicle type
       const matchingDriverSocketIds = zoneManager.getDriverSocketsByVehicleType(zones, vehicleType);
@@ -311,7 +308,7 @@ class SocketService {
         this.io.to(socketId).emit('newRideRequest', rideData);
       });
 
-      console.log(`   Sent ride request to ${matchingDriverSocketIds.length} ${vehicleType} drivers`);
+      console.log(`[Ride] Notified ${matchingDriverSocketIds.length} ${vehicleType} drivers`);
 
       // Send confirmation to customer
       socket.emit('rideRequested', {
@@ -323,7 +320,7 @@ class SocketService {
       });
 
     } catch (error) {
-      console.error('❌ RequestRide error:', error);
+      console.error('[Error] RequestRide:', error.message);
       socket.emit('error', { message: 'Failed to request ride', error: error.message });
     }
   }
@@ -369,7 +366,7 @@ class SocketService {
         riderId: socket.user.userId
       });
 
-      console.log(`✅ Ride ${rideId} accepted by driver ${socket.user.userId}`);
+      console.log(`[Ride] ${rideId} accepted by driver ${socket.user.userId}`);
 
       // Generate OTPs for ride start and completion
       const startOtp = Math.floor(1000 + Math.random() * 9000).toString();
@@ -433,7 +430,7 @@ class SocketService {
       });
 
     } catch (error) {
-      console.error('❌ RideAccepted error:', error);
+      console.error('[Error] RideAccepted:', error.message);
       socket.emit('error', { message: 'Failed to accept ride', error: error.message });
     }
   }
@@ -469,7 +466,7 @@ class SocketService {
       socket.emit('rideStatusUpdateConfirm', { rideId, status: 'ARRIVED' });
 
     } catch (error) {
-      console.error('❌ RideArrived error:', error);
+      console.error('[Error] RideArrived:', error.message);
       socket.emit('error', { message: 'Failed to update ride status', error: error.message });
     }
   }
@@ -499,7 +496,7 @@ class SocketService {
       }
 
       if (otp !== ride.otp.startOtp) {
-        console.log(`❌ Invalid OTP for ride ${rideId}: entered ${otp}, expected ${ride.otp.startOtp}`);
+        console.log(`[OTP] Invalid start OTP for ride ${rideId}`);
         return socket.emit('otpError', { message: 'Invalid OTP. Please ask the customer for the correct code.' });
       }
 
@@ -519,10 +516,10 @@ class SocketService {
 
       // Emit OTP verified confirmation event
       socket.emit('rideStartedConfirm', { rideId, status: 'STARTED' });
-      console.log(`🚗 Ride ${rideId} started - OTP verified successfully`);
+      console.log(`[Ride] ${rideId} started`);
 
     } catch (error) {
-      console.error('❌ RideStarted error:', error);
+      console.error('[Error] RideStarted:', error.message);
       socket.emit('error', { message: 'Failed to start ride', error: error.message });
     }
   }
@@ -552,7 +549,7 @@ class SocketService {
       }
 
       if (otp !== ride.otp.endOtp) {
-        console.log(`❌ Invalid OTP for ride ${rideId}: entered ${otp}, expected ${ride.otp.endOtp}`);
+        console.log(`[OTP] Invalid end OTP for ride ${rideId}`);
         return socket.emit('otpError', { message: 'Invalid OTP. Please ask the customer for the correct code.' });
       }
 
@@ -595,10 +592,10 @@ class SocketService {
       // Clean up active ride mapping
       this.activeRides.delete(rideId);
 
-      console.log(`✅ Ride ${rideId} completed with OTP verified. Fare: ₹${ride.fare.totalAmount}`);
+      console.log(`[Ride] ${rideId} completed, fare: ${ride.fare.totalAmount}`);
 
     } catch (error) {
-      console.error('❌ RideCompleted error:', error);
+      console.error('[Error] RideCompleted:', error.message);
       socket.emit('error', { message: 'Failed to complete ride', error: error.message });
     }
   }
@@ -634,7 +631,7 @@ class SocketService {
       }
 
     } catch (error) {
-      console.error('❌ UpdateLocation error:', error);
+      console.error('[Error] UpdateLocation:', error.message);
       socket.emit('error', { message: 'Failed to update location', error: error.message });
     }
   }
@@ -696,7 +693,7 @@ class SocketService {
           });
         });
 
-        console.log(`📢 Ride cancellation broadcast to ${matchingDriverSocketIds.length} ${ride.vehicleType} drivers in ${zones.length} zones`);
+        console.log(`[Ride] Cancellation broadcast to ${matchingDriverSocketIds.length} drivers`);
       }
 
       // Notify other party (if ride was accepted and driver assigned)
@@ -718,9 +715,7 @@ class SocketService {
           cancelledBy: isCustomer ? 'customer' : 'rider',
           reason: ride.cancellationReason
         });
-        console.log(`📢 Ride cancellation sent to ${isCustomer ? 'rider' : 'customer'}: ${otherSocketId}`);
-      } else if (!wasSearching) {
-        console.log(`⚠️  Could not find socket for ${isCustomer ? 'rider' : 'customer'} to notify cancellation`);
+        console.log(`[Ride] Cancellation sent to ${isCustomer ? 'rider' : 'customer'}`);
       }
 
       socket.emit('rideCancelledConfirm', { rideId });
@@ -728,10 +723,10 @@ class SocketService {
       // Clean up active ride mapping
       this.activeRides.delete(rideId);
 
-      console.log(`❌ Ride ${rideId} cancelled by ${isCustomer ? 'customer' : 'rider'}${wasSearching ? ' (was searching)' : ''}`);
+      console.log(`[Ride] ${rideId} cancelled by ${isCustomer ? 'customer' : 'rider'}`);
 
     } catch (error) {
-      console.error('❌ CancelRide error:', error);
+      console.error('[Error] CancelRide:', error.message);
       socket.emit('error', { message: 'Failed to cancel ride', error: error.message });
     }
   }
@@ -780,7 +775,7 @@ class SocketService {
               'riderProfile.totalRatings': newTotalRatings
             });
 
-            console.log(`⭐ Driver ${ride.rider} rated ${rating} stars. New avg: ${newRating.toFixed(1)}`);
+            console.log(`[Rating] Driver ${ride.rider}: ${rating} stars`);
           }
         }
       } else {
@@ -804,17 +799,16 @@ class SocketService {
             'customerProfile.totalRatings': newTotalRatings
           });
 
-          console.log(`⭐ Customer ${ride.customer} rated ${rating} stars. New avg: ${newRating.toFixed(1)}`);
+          console.log(`[Rating] Customer ${ride.customer}: ${rating} stars`);
         }
       }
 
       await ride.save();
 
       socket.emit('ratingSubmitted', { rideId, rating, ratedBy });
-      console.log(`⭐ Rating submitted for ride ${rideId}: ${rating} stars by ${ratedBy}`);
 
     } catch (error) {
-      console.error('❌ SubmitRating error:', error);
+      console.error('[Error] SubmitRating:', error.message);
       socket.emit('error', { message: 'Failed to submit rating', error: error.message });
     }
   }
@@ -830,7 +824,7 @@ class SocketService {
         return socket.emit('error', { message: 'Ride ID and location are required' });
       }
 
-      console.log(`🎮 Admin updating driver location for ride ${rideId}:`, location);
+      console.log(`[Admin] Updating driver location for ride ${rideId}`);
 
       // Get the ride mapping
       const rideMapping = this.activeRides.get(rideId);
@@ -855,7 +849,7 @@ class SocketService {
               address: location.address || ''
             }
           });
-          console.log(`📍 Admin location sent to customer: ${customerSocketId}`);
+          // Location sent to customer
         }
       } else {
         // Send to customer using existing mapping
@@ -868,14 +862,14 @@ class SocketService {
               address: location.address || ''
             }
           });
-          console.log(`📍 Admin location sent to customer via mapping`);
+          // Location sent to customer
         }
       }
 
       socket.emit('admin:locationUpdated', { rideId, location });
 
     } catch (error) {
-      console.error('❌ Admin UpdateDriverLocation error:', error);
+      console.error('[Error] Admin UpdateDriverLocation:', error.message);
       socket.emit('error', { message: 'Failed to update driver location', error: error.message });
     }
   }
@@ -896,7 +890,7 @@ class SocketService {
         return socket.emit('error', { message: 'Invalid status' });
       }
 
-      console.log(`🎮 Admin updating ride ${rideId} status to: ${status}`);
+      console.log(`[Admin] Updating ride ${rideId} status: ${status}`);
 
       // Update ride in database
       const updateData = {
@@ -919,7 +913,7 @@ class SocketService {
           status,
           ...(status === 'COMPLETED' && { fare: ride.fare })
         });
-        console.log(`📢 Admin status update sent to customer: ${status}`);
+        // Status update sent to customer
       }
 
       // Also notify driver if connected
@@ -956,7 +950,7 @@ class SocketService {
       socket.emit('admin:statusUpdated', { rideId, status });
 
     } catch (error) {
-      console.error('❌ Admin UpdateRideStatus error:', error);
+      console.error('[Error] Admin UpdateRideStatus:', error.message);
       socket.emit('error', { message: 'Failed to update ride status', error: error.message });
     }
   }
@@ -965,7 +959,7 @@ class SocketService {
    * Handle socket disconnect
    */
   async handleDisconnect(socket) {
-    console.log(`🔌 Disconnected: ${socket.id} (User: ${socket.user.userId})`);
+    console.log(`[Socket] Disconnected: ${socket.id}`);
 
     // Clean up zone subscriptions
     zoneManager.handleDisconnect(socket);

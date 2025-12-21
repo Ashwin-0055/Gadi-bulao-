@@ -61,7 +61,7 @@ const phoneLogin = async (req, res) => {
       }
 
       await user.save();
-      console.log(`✅ New user created: ${phone} (${role || 'customer'})`);
+      console.log(`[Auth] New user: ${phone}`);
     } else {
       // Existing user - update vehicle details if provided and role is rider
       if (role === 'rider' && vehicle) {
@@ -81,7 +81,7 @@ const phoneLogin = async (req, res) => {
         }
         user.activeRole = 'rider';
       }
-      console.log(`✅ Existing user logged in: ${phone}`);
+      console.log(`[Auth] Login: ${phone}`);
     }
 
     // Generate tokens
@@ -109,7 +109,7 @@ const phoneLogin = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Phone login error:', error);
+    console.error('[Error] Login:', error.message);
     res.status(500).json({
       success: false,
       message: 'Login failed',
@@ -167,7 +167,7 @@ const refreshToken = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Token refresh error:', error);
+    console.error('[Error] Token refresh:', error.message);
     res.status(500).json({
       success: false,
       message: 'Token refresh failed',
@@ -227,7 +227,7 @@ const switchRole = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Role switch error:', error);
+    console.error('[Error] Role switch:', error.message);
     res.status(500).json({
       success: false,
       message: 'Role switch failed',
@@ -285,7 +285,7 @@ const registerRider = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Rider registration error:', error);
+    console.error('[Error] Rider registration:', error.message);
     res.status(500).json({
       success: false,
       message: 'Rider registration failed',
@@ -314,7 +314,7 @@ const getProfile = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Get profile error:', error);
+    console.error('[Error] Get profile:', error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch profile',
@@ -374,7 +374,7 @@ const getAllUsers = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Get all users error:', error);
+    console.error('[Error] Get all users:', error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch users',
@@ -456,7 +456,7 @@ const getAllDrivers = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Get all drivers error:', error);
+    console.error('[Error] Get all drivers:', error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch drivers',
@@ -487,7 +487,7 @@ const getUserById = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Get user by ID error:', error);
+    console.error('[Error] Get user by ID:', error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch user',
@@ -528,7 +528,7 @@ const updateUserById = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Update user error:', error);
+    console.error('[Error] Update user:', error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to update user',
@@ -559,7 +559,7 @@ const deleteUserById = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Delete user error:', error);
+    console.error('[Error] Delete user:', error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to delete user',
