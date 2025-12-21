@@ -323,10 +323,260 @@ const getProfile = async (req, res) => {
   }
 };
 
+/**
+ * Get all users (Admin)
+ */
+const getAllUsers = async (req, res) => {
+  try {
+    const { page = 1, limit = 50, role, search } = req.query;
+
+    const query = {};
+    if (role) {
+      query.role = role;
+    }
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const users = await User.find(query)
+      .select('-refreshToken')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await User.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        users: users.map(u => ({
+          id: u._id,
+          phone: u.phone,
+          name: u.name,
+          role: u.role,
+          activeRole: u.activeRole,
+          createdAt: u.createdAt,
+          customerProfile: u.customerProfile,
+          riderProfile: u.riderProfile
+        })),
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(total / parseInt(limit))
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Get all users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch users',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get all drivers (Admin)
+ */
+const getAllDrivers = async (req, res) => {
+  try {
+    const { page = 1, limit = 50, onDuty, vehicleType } = req.query;
+
+    const query = { role: 'rider' };
+
+    if (onDuty !== undefined) {
+      query['riderProfile.isOnDuty'] = onDuty === 'true';
+    }
+    if (vehicleType) {
+      query['riderProfile.vehicle.type'] = vehicleType;
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const drivers = await User.find(query)
+      .select('-refreshToken')
+      .sort({ 'riderProfile.earnings': -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await User.countDocuments(query);
+
+    // Get summary stats
+    const stats = await User.aggregate([
+      { $match: { role: 'rider' } },
+      {
+        $group: {
+          _id: null,
+          totalDrivers: { $sum: 1 },
+          totalEarnings: { $sum: '$riderProfile.earnings' },
+          totalRides: { $sum: '$riderProfile.totalRides' },
+          onDutyCount: {
+            $sum: { $cond: ['$riderProfile.isOnDuty', 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        drivers: drivers.map(d => ({
+          id: d._id,
+          phone: d.phone,
+          name: d.name,
+          createdAt: d.createdAt,
+          vehicle: d.riderProfile?.vehicle,
+          isOnDuty: d.riderProfile?.isOnDuty || false,
+          earnings: d.riderProfile?.earnings || 0,
+          totalRides: d.riderProfile?.totalRides || 0,
+          rating: d.riderProfile?.rating || 5.0,
+          currentZone: d.riderProfile?.currentZone
+        })),
+        stats: stats[0] || {
+          totalDrivers: 0,
+          totalEarnings: 0,
+          totalRides: 0,
+          onDutyCount: 0
+        },
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(total / parseInt(limit))
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Get all drivers error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch drivers',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get user by ID (Admin)
+ */
+const getUserById = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId).select('-refreshToken');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: { user }
+    });
+
+  } catch (error) {
+    console.error('❌ Get user by ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch user',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Update user by ID (Admin)
+ */
+const updateUserById = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const updates = req.body;
+
+    // Prevent updating sensitive fields
+    delete updates.refreshToken;
+    delete updates._id;
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $set: updates },
+      { new: true }
+    ).select('-refreshToken');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'User updated successfully',
+      data: { user }
+    });
+
+  } catch (error) {
+    console.error('❌ Update user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update user',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Delete user by ID (Admin)
+ */
+const deleteUserById = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findByIdAndDelete(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'User deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Delete user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete user',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   phoneLogin,
   refreshToken,
   switchRole,
   registerRider,
-  getProfile
+  getProfile,
+  getAllUsers,
+  getAllDrivers,
+  getUserById,
+  updateUserById,
+  deleteUserById
 };

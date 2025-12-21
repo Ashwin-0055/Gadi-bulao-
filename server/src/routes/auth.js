@@ -5,9 +5,49 @@ const {
   refreshToken,
   switchRole,
   registerRider,
-  getProfile
+  getProfile,
+  getAllUsers,
+  getAllDrivers,
+  getUserById,
+  updateUserById,
+  deleteUserById
 } = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
+
+/**
+ * @route   GET /api/auth/users
+ * @desc    Get all users (Admin)
+ * @access  Public (for admin panel - should be protected in production)
+ */
+router.get('/users', getAllUsers);
+
+/**
+ * @route   GET /api/auth/drivers
+ * @desc    Get all drivers (Admin)
+ * @access  Public (for admin panel)
+ */
+router.get('/drivers', getAllDrivers);
+
+/**
+ * @route   GET /api/auth/users/:userId
+ * @desc    Get user by ID (Admin)
+ * @access  Public (for admin panel)
+ */
+router.get('/users/:userId', getUserById);
+
+/**
+ * @route   PATCH /api/auth/users/:userId
+ * @desc    Update user by ID (Admin)
+ * @access  Public (for admin panel)
+ */
+router.patch('/users/:userId', updateUserById);
+
+/**
+ * @route   DELETE /api/auth/users/:userId
+ * @desc    Delete user by ID (Admin)
+ * @access  Public (for admin panel)
+ */
+router.delete('/users/:userId', deleteUserById);
 
 /**
  * @route   POST /api/auth/login

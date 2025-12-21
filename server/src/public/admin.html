@@ -14,222 +14,183 @@
     .header {
       background: linear-gradient(135deg, #4CAF50, #2E7D32);
       color: white;
-      padding: 20px;
+      padding: 16px 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
-    .header h1 { font-size: 24px; }
+    .header h1 { font-size: 22px; }
     .header .status { display: flex; align-items: center; gap: 10px; }
     .status-dot { width: 12px; height: 12px; border-radius: 50%; background: #ff5722; }
     .status-dot.connected { background: #8BC34A; }
 
-    .container { display: flex; height: calc(100vh - 70px); }
-
-    .sidebar {
-      width: 400px;
+    .tabs {
+      display: flex;
       background: white;
-      border-right: 1px solid #e0e0e0;
-      overflow-y: auto;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 0 20px;
     }
+    .tab {
+      padding: 14px 24px;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      font-weight: 500;
+      color: #666;
+      transition: all 0.2s;
+    }
+    .tab:hover { color: #4CAF50; }
+    .tab.active { color: #4CAF50; border-bottom-color: #4CAF50; }
 
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .container { display: flex; height: calc(100vh - 120px); }
+    .sidebar { width: 400px; background: white; border-right: 1px solid #e0e0e0; overflow-y: auto; }
     .main { flex: 1; display: flex; flex-direction: column; }
-
     #map { flex: 1; }
 
     .section { padding: 16px; border-bottom: 1px solid #eee; }
     .section-title { font-size: 14px; font-weight: 600; color: #666; margin-bottom: 12px; text-transform: uppercase; }
 
-    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-    .stat-card { background: #f9f9f9; padding: 16px; border-radius: 8px; text-align: center; }
-    .stat-value { font-size: 28px; font-weight: 700; color: #4CAF50; }
-    .stat-label { font-size: 12px; color: #666; margin-top: 4px; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 20px; }
+    .stat-card { background: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .stat-value { font-size: 32px; font-weight: 700; color: #4CAF50; }
+    .stat-label { font-size: 13px; color: #666; margin-top: 6px; }
 
-    .ride-card {
-      background: #f9f9f9;
-      border-radius: 8px;
-      padding: 14px;
-      margin-bottom: 10px;
-      cursor: pointer;
-      transition: all 0.2s;
-      border: 2px solid transparent;
-    }
-    .ride-card:hover { background: #f0f0f0; }
-    .ride-card.selected { border-color: #4CAF50; background: #E8F5E9; }
-    .ride-id { font-size: 12px; color: #999; font-family: monospace; }
-    .ride-customer { font-size: 15px; font-weight: 600; margin: 6px 0; }
-    .ride-info { font-size: 13px; color: #666; }
-    .ride-status { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; margin-top: 8px; }
-    .status-searching { background: #FFF3E0; color: #E65100; }
-    .status-accepted { background: #E3F2FD; color: #1565C0; }
-    .status-arrived { background: #F3E5F5; color: #7B1FA2; }
-    .status-started { background: #E8F5E9; color: #2E7D32; }
-    .status-completed { background: #ECEFF1; color: #546E7A; }
-    .status-cancelled { background: #FFEBEE; color: #C62828; }
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th, .data-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #eee; }
+    .data-table th { background: #f9f9f9; font-weight: 600; color: #666; font-size: 12px; text-transform: uppercase; }
+    .data-table tr:hover { background: #f5f5f5; }
 
-    .controls { padding: 16px; background: white; border-top: 1px solid #eee; }
-    .control-group { margin-bottom: 16px; }
-    .control-label { font-size: 12px; font-weight: 600; color: #666; margin-bottom: 8px; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-success { background: #E8F5E9; color: #2E7D32; }
+    .badge-warning { background: #FFF3E0; color: #E65100; }
+    .badge-info { background: #E3F2FD; color: #1565C0; }
+    .badge-danger { background: #FFEBEE; color: #C62828; }
 
-    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
-    .btn {
-      padding: 10px 16px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 13px;
-      transition: all 0.2s;
-    }
+    .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.2s; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
     .btn-primary { background: #4CAF50; color: white; }
     .btn-primary:hover:not(:disabled) { background: #43A047; }
     .btn-secondary { background: #e0e0e0; color: #333; }
     .btn-secondary:hover:not(:disabled) { background: #d0d0d0; }
     .btn-danger { background: #F44336; color: white; }
     .btn-danger:hover:not(:disabled) { background: #E53935; }
-    .btn-warning { background: #FF9800; color: white; }
-    .btn-warning:hover:not(:disabled) { background: #FB8C00; }
     .btn-info { background: #2196F3; color: white; }
-    .btn-info:hover:not(:disabled) { background: #1E88E5; }
 
-    .simulation-controls { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
-    .speed-control { display: flex; align-items: center; gap: 8px; }
-    .speed-control input { width: 80px; }
+    .search-box { display: flex; gap: 10px; margin-bottom: 16px; }
+    .search-box input { flex: 1; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+    .search-box select { padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
 
-    .empty-state { text-align: center; padding: 40px; color: #999; }
-    .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+    .user-actions { display: flex; gap: 6px; }
 
-    .driver-list { max-height: 200px; overflow-y: auto; }
-    .driver-card {
-      background: #f9f9f9;
-      border-radius: 8px;
-      padding: 10px 14px;
-      margin-bottom: 8px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .driver-name { font-weight: 600; }
-    .driver-vehicle { font-size: 12px; color: #666; }
-    .driver-status { font-size: 11px; padding: 3px 8px; border-radius: 10px; }
-    .driver-online { background: #E8F5E9; color: #2E7D32; }
-    .driver-offline { background: #FFEBEE; color: #C62828; }
+    .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+    .modal.active { display: flex; }
+    .modal-content { background: white; border-radius: 12px; padding: 24px; width: 500px; max-width: 90%; max-height: 80vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .modal-header h3 { font-size: 18px; }
+    .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #666; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; margin-bottom: 6px; font-weight: 500; color: #333; }
+    .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+    .empty-state .icon { font-size: 64px; margin-bottom: 16px; }
+
+    .ride-card { background: #f9f9f9; border-radius: 8px; padding: 14px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; border: 2px solid transparent; }
+    .ride-card:hover { background: #f0f0f0; }
+    .ride-card.selected { border-color: #4CAF50; background: #E8F5E9; }
+
+    .controls { padding: 16px; background: white; border-top: 1px solid #eee; }
+    .control-group { margin-bottom: 16px; }
+    .control-label { font-size: 12px; font-weight: 600; color: #666; margin-bottom: 8px; }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
 
     .log-container { max-height: 150px; overflow-y: auto; background: #1e1e1e; border-radius: 6px; padding: 12px; }
     .log-entry { font-family: monospace; font-size: 12px; color: #aaa; margin-bottom: 4px; }
     .log-entry.info { color: #4FC3F7; }
     .log-entry.success { color: #81C784; }
     .log-entry.error { color: #E57373; }
-    .log-entry.warning { color: #FFB74D; }
 
-    .vehicle-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #E3F2FD; color: #1565C0; margin-left: 8px; }
-
-    @media (max-width: 900px) {
+    @media (max-width: 1200px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 768px) {
       .container { flex-direction: column; }
       .sidebar { width: 100%; height: 50%; }
-      .main { height: 50%; }
+      .tabs { overflow-x: auto; }
+      .tab { white-space: nowrap; }
     }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>Gadi Bulao Admin Panel</h1>
+    <h1>🚗 Gadi Bulao Admin</h1>
     <div class="status">
       <div class="status-dot" id="statusDot"></div>
       <span id="statusText">Connecting...</span>
     </div>
   </div>
 
-  <div class="container">
-    <div class="sidebar">
-      <!-- Stats -->
-      <div class="section">
-        <div class="section-title">Dashboard</div>
-        <div class="stats">
-          <div class="stat-card">
-            <div class="stat-value" id="activeRidesCount">0</div>
-            <div class="stat-label">Active Rides</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value" id="onlineDriversCount">0</div>
-            <div class="stat-label">Online Drivers</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value" id="totalZonesCount">0</div>
-            <div class="stat-label">Active Zones</div>
-          </div>
-        </div>
-      </div>
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('dashboard')">📊 Dashboard</div>
+    <div class="tab" onclick="showTab('rides')">🚗 Rides</div>
+    <div class="tab" onclick="showTab('drivers')">👨‍✈️ Drivers</div>
+    <div class="tab" onclick="showTab('users')">👥 Users</div>
+  </div>
 
-      <!-- Active Rides -->
-      <div class="section">
-        <div class="section-title">Active Rides</div>
-        <div id="ridesList">
-          <div class="empty-state">
-            <div class="icon">🚗</div>
-            <div>No active rides</div>
-          </div>
-        </div>
-        <button class="btn btn-secondary" onclick="fetchRides()" style="width: 100%; margin-top: 12px;">
-          🔄 Refresh Rides
-        </button>
+  <!-- Dashboard Tab -->
+  <div id="tab-dashboard" class="tab-content active">
+    <div class="stats" id="dashboardStats">
+      <div class="stat-card">
+        <div class="stat-value" id="statActiveRides">0</div>
+        <div class="stat-label">Active Rides</div>
       </div>
-
-      <!-- Online Drivers -->
-      <div class="section">
-        <div class="section-title">Online Drivers</div>
-        <div id="driversList" class="driver-list">
-          <div class="empty-state" style="padding: 20px;">
-            <div>No drivers online</div>
-          </div>
-        </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statTotalDrivers">0</div>
+        <div class="stat-label">Total Drivers</div>
       </div>
-
-      <!-- Activity Log -->
-      <div class="section">
-        <div class="section-title">Activity Log</div>
-        <div class="log-container" id="logContainer">
-          <div class="log-entry">Waiting for activity...</div>
-        </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statOnlineDrivers">0</div>
+        <div class="stat-label">Online Now</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statTotalEarnings">₹0</div>
+        <div class="stat-label">Total Earnings</div>
       </div>
     </div>
+    <div style="padding: 20px;">
+      <h3 style="margin-bottom: 16px;">📋 Recent Activity</h3>
+      <div class="log-container" id="activityLog">
+        <div class="log-entry">Waiting for activity...</div>
+      </div>
+    </div>
+  </div>
 
-    <div class="main">
-      <div id="map"></div>
-
-      <div class="controls">
-        <div class="control-group">
-          <div class="control-label">Selected Ride: <span id="selectedRideId">None</span></div>
-          <div class="btn-group">
-            <button class="btn btn-warning" onclick="updateStatus('ARRIVED')" id="btnArrived" disabled>
-              📍 Mark Arrived
-            </button>
-            <button class="btn btn-info" onclick="updateStatus('STARTED')" id="btnStarted" disabled>
-              🚗 Start Ride
-            </button>
-            <button class="btn btn-primary" onclick="updateStatus('COMPLETED')" id="btnCompleted" disabled>
-              ✅ Complete Ride
-            </button>
-            <button class="btn btn-danger" onclick="cancelRide()" id="btnCancel" disabled>
-              ❌ Cancel Ride
-            </button>
+  <!-- Rides Tab -->
+  <div id="tab-rides" class="tab-content">
+    <div class="container">
+      <div class="sidebar">
+        <div class="section">
+          <div class="section-title">Active Rides</div>
+          <div id="ridesList">
+            <div class="empty-state"><div class="icon">🚗</div><div>No active rides</div></div>
           </div>
+          <button class="btn btn-secondary" onclick="fetchRides()" style="width: 100%; margin-top: 12px;">🔄 Refresh</button>
         </div>
-
-        <div class="control-group">
-          <div class="control-label">Driver Simulation</div>
-          <div class="simulation-controls">
-            <button class="btn btn-secondary" onclick="moveDriver('back')" id="btnBack" disabled>⏮️</button>
-            <button class="btn btn-primary" onclick="toggleSimulation()" id="btnSimulate" disabled>
-              ▶️ Start Simulation
-            </button>
-            <button class="btn btn-secondary" onclick="moveDriver('forward')" id="btnForward" disabled>⏭️</button>
-            <div class="speed-control">
-              <span>Speed:</span>
-              <input type="range" min="100" max="2000" value="500" id="speedSlider">
-              <span id="speedValue">500ms</span>
+      </div>
+      <div class="main">
+        <div id="map"></div>
+        <div class="controls">
+          <div class="control-group">
+            <div class="control-label">Selected Ride: <span id="selectedRideId">None</span></div>
+            <div class="btn-group">
+              <button class="btn btn-info" onclick="updateStatus('ARRIVED')" id="btnArrived" disabled>📍 Arrived</button>
+              <button class="btn btn-primary" onclick="updateStatus('STARTED')" id="btnStarted" disabled>🚗 Start</button>
+              <button class="btn btn-success" onclick="updateStatus('COMPLETED')" id="btnCompleted" disabled>✅ Complete</button>
+              <button class="btn btn-danger" onclick="cancelRide()" id="btnCancel" disabled>❌ Cancel</button>
             </div>
           </div>
         </div>
@@ -237,433 +198,436 @@
     </div>
   </div>
 
-  <script>
-    // Configuration
-    const API_URL = window.location.origin;
+  <!-- Drivers Tab -->
+  <div id="tab-drivers" class="tab-content">
+    <div style="padding: 20px;">
+      <div class="search-box">
+        <input type="text" id="driverSearch" placeholder="Search by name or phone..." oninput="searchDrivers()">
+        <select id="driverFilter" onchange="fetchDrivers()">
+          <option value="">All Drivers</option>
+          <option value="true">Online Only</option>
+          <option value="false">Offline Only</option>
+        </select>
+        <select id="vehicleFilter" onchange="fetchDrivers()">
+          <option value="">All Vehicles</option>
+          <option value="bike">Bike</option>
+          <option value="auto">Auto</option>
+          <option value="cab">Cab</option>
+        </select>
+        <button class="btn btn-secondary" onclick="fetchDrivers()">🔄 Refresh</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Vehicle</th>
+            <th>Status</th>
+            <th>Rides</th>
+            <th>Earnings</th>
+            <th>Rating</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="driversTableBody">
+          <tr><td colspan="8" style="text-align: center; padding: 40px;">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-    // State
+  <!-- Users Tab -->
+  <div id="tab-users" class="tab-content">
+    <div style="padding: 20px;">
+      <div class="search-box">
+        <input type="text" id="userSearch" placeholder="Search by name or phone..." oninput="searchUsers()">
+        <select id="roleFilter" onchange="fetchUsers()">
+          <option value="">All Roles</option>
+          <option value="customer">Customers</option>
+          <option value="rider">Drivers</option>
+        </select>
+        <button class="btn btn-secondary" onclick="fetchUsers()">🔄 Refresh</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Role</th>
+            <th>Rides</th>
+            <th>Rating</th>
+            <th>Joined</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="usersTableBody">
+          <tr><td colspan="7" style="text-align: center; padding: 40px;">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Edit User Modal -->
+  <div class="modal" id="editUserModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Edit User</h3>
+        <button class="modal-close" onclick="closeModal('editUserModal')">&times;</button>
+      </div>
+      <form id="editUserForm" onsubmit="saveUser(event)">
+        <input type="hidden" id="editUserId">
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" id="editUserName" required>
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="text" id="editUserPhone" required>
+        </div>
+        <div id="riderFields" style="display: none;">
+          <div class="form-group">
+            <label>Earnings (₹)</label>
+            <input type="number" id="editUserEarnings">
+          </div>
+          <div class="form-group">
+            <label>Total Rides</label>
+            <input type="number" id="editUserRides">
+          </div>
+        </div>
+        <div class="btn-group" style="justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('editUserModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = window.location.origin;
     let socket = null;
     let map = null;
     let selectedRide = null;
     let rides = [];
     let drivers = [];
-    let route = [];
-    let routeIndex = 0;
-    let isSimulating = false;
-    let simulationInterval = null;
+    let users = [];
     let markers = {};
-    let routeLine = null;
 
-    // Initialize
     document.addEventListener('DOMContentLoaded', () => {
       initMap();
       connectSocket();
+      fetchDashboardStats();
       fetchRides();
-      fetchStats();
-
-      // Refresh data periodically
+      fetchDrivers();
+      fetchUsers();
+      setInterval(fetchDashboardStats, 10000);
       setInterval(fetchRides, 10000);
-      setInterval(fetchStats, 5000);
-
-      // Speed slider
-      document.getElementById('speedSlider').addEventListener('input', (e) => {
-        document.getElementById('speedValue').textContent = e.target.value + 'ms';
-      });
     });
 
-    // Initialize Map
-    function initMap() {
-      map = L.map('map').setView([28.6139, 77.2090], 12);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
-      }).addTo(map);
-
-      // Click to move driver
-      map.on('click', (e) => {
-        if (selectedRide) {
-          const location = { latitude: e.latlng.lat, longitude: e.latlng.lng };
-          sendDriverLocation(location);
-        }
-      });
+    function showTab(tabName) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelector(`.tab[onclick="showTab('${tabName}')"]`).classList.add('active');
+      document.getElementById(`tab-${tabName}`).classList.add('active');
+      if (tabName === 'rides') setTimeout(() => map?.invalidateSize(), 100);
     }
 
-    // Connect Socket
-    function connectSocket() {
-      socket = io(API_URL, {
-        transports: ['websocket'],
-        timeout: 60000
-      });
+    function initMap() {
+      map = L.map('map').setView([28.6139, 77.2090], 12);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+    }
 
+    function connectSocket() {
+      socket = io(API_URL, { transports: ['websocket'], timeout: 60000 });
       socket.on('connect', () => {
         document.getElementById('statusDot').classList.add('connected');
         document.getElementById('statusText').textContent = 'Connected';
         addLog('Connected to server', 'success');
       });
-
       socket.on('disconnect', () => {
         document.getElementById('statusDot').classList.remove('connected');
         document.getElementById('statusText').textContent = 'Disconnected';
-        addLog('Disconnected from server', 'error');
+        addLog('Disconnected', 'error');
       });
-
-      socket.on('newRideRequest', (data) => {
-        addLog(`New ride request: ${data.rideId}`, 'info');
-        fetchRides();
-      });
-
-      socket.on('rideAccepted', (data) => {
-        addLog(`Ride accepted: ${data.rideId}`, 'success');
-        fetchRides();
-      });
-
-      socket.on('rideStatusUpdate', (data) => {
-        addLog(`Ride ${data.rideId} status: ${data.status}`, 'info');
-        fetchRides();
-      });
+      socket.on('newRideRequest', () => { addLog('New ride request', 'info'); fetchRides(); });
+      socket.on('rideAccepted', () => { addLog('Ride accepted', 'success'); fetchRides(); });
     }
 
-    // Fetch Rides
+    async function fetchDashboardStats() {
+      try {
+        const [ridesRes, driversRes] = await Promise.all([
+          fetch(`${API_URL}/api/rides/active`),
+          fetch(`${API_URL}/api/auth/drivers`)
+        ]);
+        const ridesData = await ridesRes.json();
+        const driversData = await driversRes.json();
+
+        document.getElementById('statActiveRides').textContent = ridesData.data?.length || 0;
+        document.getElementById('statTotalDrivers').textContent = driversData.data?.stats?.totalDrivers || 0;
+        document.getElementById('statOnlineDrivers').textContent = driversData.data?.stats?.onDutyCount || 0;
+        document.getElementById('statTotalEarnings').textContent = '₹' + (driversData.data?.stats?.totalEarnings || 0).toLocaleString();
+      } catch (e) { console.error(e); }
+    }
+
     async function fetchRides() {
       try {
-        const response = await fetch(`${API_URL}/api/rides/active`);
-        const data = await response.json();
-
-        if (data.success) {
-          rides = data.data || [];
-          document.getElementById('activeRidesCount').textContent = rides.length;
-          renderRides();
-          updateMapMarkers();
-        }
-      } catch (error) {
-        console.error('Error fetching rides:', error);
-      }
+        const res = await fetch(`${API_URL}/api/rides/active`);
+        const data = await res.json();
+        rides = data.data || [];
+        renderRides();
+      } catch (e) { console.error(e); }
     }
 
-    // Fetch Stats
-    async function fetchStats() {
-      try {
-        const response = await fetch(`${API_URL}/api/stats`);
-        const data = await response.json();
-
-        if (data.success) {
-          document.getElementById('onlineDriversCount').textContent = data.data.zoneStats?.totalDrivers || 0;
-          document.getElementById('totalZonesCount').textContent = data.data.zoneStats?.totalZones || 0;
-
-          // Update drivers list
-          drivers = data.data.onlineDrivers || [];
-          renderDrivers();
-        }
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-      }
-    }
-
-    // Render Rides
     function renderRides() {
       const container = document.getElementById('ridesList');
-
       if (rides.length === 0) {
-        container.innerHTML = `
-          <div class="empty-state">
-            <div class="icon">🚗</div>
-            <div>No active rides</div>
-          </div>
-        `;
+        container.innerHTML = '<div class="empty-state"><div class="icon">🚗</div><div>No active rides</div></div>';
         return;
       }
-
-      container.innerHTML = rides.map(ride => `
-        <div class="ride-card ${selectedRide?.rideId === ride.rideId ? 'selected' : ''}"
-             onclick="selectRide('${ride.rideId}')">
-          <div class="ride-id">ID: ${ride.rideId.substring(0, 12)}...</div>
-          <div class="ride-customer">
-            ${ride.customerName || 'Customer'}
-            <span class="vehicle-badge">${ride.vehicleType || 'N/A'}</span>
-          </div>
-          <div class="ride-info">
-            📍 ${ride.pickup?.address?.substring(0, 30) || 'Pickup'}...
-          </div>
-          <div class="ride-info">
-            🎯 ${ride.dropoff?.address?.substring(0, 30) || 'Dropoff'}...
-          </div>
-          <span class="ride-status status-${ride.status?.toLowerCase()}">${ride.status}</span>
+      container.innerHTML = rides.map(r => `
+        <div class="ride-card ${selectedRide?.rideId === r.rideId ? 'selected' : ''}" onclick="selectRide('${r.rideId}')">
+          <div style="font-size: 12px; color: #999;">${r.rideId.substring(0, 12)}...</div>
+          <div style="font-weight: 600; margin: 4px 0;">${r.customerName} <span class="badge badge-info">${r.vehicleType}</span></div>
+          <div style="font-size: 13px; color: #666;">📍 ${(r.pickup?.address || 'Pickup').substring(0, 30)}...</div>
+          <span class="badge badge-${r.status === 'SEARCHING' ? 'warning' : 'success'}" style="margin-top: 8px;">${r.status}</span>
         </div>
       `).join('');
     }
 
-    // Render Drivers
-    function renderDrivers() {
-      const container = document.getElementById('driversList');
-
-      if (!drivers || drivers.length === 0) {
-        container.innerHTML = `<div class="empty-state" style="padding: 20px;"><div>No drivers online</div></div>`;
-        return;
-      }
-
-      container.innerHTML = drivers.map(driver => `
-        <div class="driver-card">
-          <div>
-            <div class="driver-name">${driver.name || 'Driver'}</div>
-            <div class="driver-vehicle">${driver.vehicleType || 'Unknown'} - ${driver.zone || 'No zone'}</div>
-          </div>
-          <span class="driver-status driver-online">Online</span>
-        </div>
-      `).join('');
-    }
-
-    // Select Ride
     function selectRide(rideId) {
       selectedRide = rides.find(r => r.rideId === rideId);
       document.getElementById('selectedRideId').textContent = rideId.substring(0, 12) + '...';
-
-      // Enable buttons
-      document.getElementById('btnArrived').disabled = !selectedRide;
-      document.getElementById('btnStarted').disabled = !selectedRide;
-      document.getElementById('btnCompleted').disabled = !selectedRide;
-      document.getElementById('btnCancel').disabled = !selectedRide;
-      document.getElementById('btnSimulate').disabled = !selectedRide;
-      document.getElementById('btnBack').disabled = !selectedRide;
-      document.getElementById('btnForward').disabled = !selectedRide;
-
+      ['btnArrived', 'btnStarted', 'btnCompleted', 'btnCancel'].forEach(id => document.getElementById(id).disabled = !selectedRide);
       renderRides();
       updateMapMarkers();
-      fetchRoute();
-
-      addLog(`Selected ride: ${rideId.substring(0, 12)}`, 'info');
     }
 
-    // Update Map Markers
     function updateMapMarkers() {
-      // Clear existing markers
       Object.values(markers).forEach(m => map.removeLayer(m));
       markers = {};
-      if (routeLine) map.removeLayer(routeLine);
-
       if (!selectedRide) return;
-
-      // Pickup marker
       if (selectedRide.pickup) {
-        const pickupIcon = L.divIcon({
-          html: '<div style="background:#22c55e;width:24px;height:24px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
-        });
-        markers.pickup = L.marker([selectedRide.pickup.latitude, selectedRide.pickup.longitude], { icon: pickupIcon })
-          .addTo(map)
-          .bindPopup('Pickup: ' + (selectedRide.pickup.address || 'Pickup Location'));
+        markers.pickup = L.marker([selectedRide.pickup.latitude, selectedRide.pickup.longitude]).addTo(map).bindPopup('Pickup');
       }
-
-      // Dropoff marker
       if (selectedRide.dropoff) {
-        const dropoffIcon = L.divIcon({
-          html: '<div style="background:#ef4444;width:24px;height:24px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
-        });
-        markers.dropoff = L.marker([selectedRide.dropoff.latitude, selectedRide.dropoff.longitude], { icon: dropoffIcon })
-          .addTo(map)
-          .bindPopup('Dropoff: ' + (selectedRide.dropoff.address || 'Dropoff Location'));
+        markers.dropoff = L.marker([selectedRide.dropoff.latitude, selectedRide.dropoff.longitude]).addTo(map).bindPopup('Dropoff');
       }
-
-      // Driver marker
-      if (selectedRide.driverLocation) {
-        updateDriverMarker(selectedRide.driverLocation);
-      }
-
-      // Fit bounds
       if (selectedRide.pickup && selectedRide.dropoff) {
-        map.fitBounds([
-          [selectedRide.pickup.latitude, selectedRide.pickup.longitude],
-          [selectedRide.dropoff.latitude, selectedRide.dropoff.longitude]
-        ], { padding: [50, 50] });
+        map.fitBounds([[selectedRide.pickup.latitude, selectedRide.pickup.longitude], [selectedRide.dropoff.latitude, selectedRide.dropoff.longitude]], { padding: [50, 50] });
       }
     }
 
-    // Update Driver Marker
-    function updateDriverMarker(location) {
-      if (markers.driver) map.removeLayer(markers.driver);
-
-      const driverIcon = L.divIcon({
-        html: '<div style="background:#4CAF50;width:32px;height:32px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:18px;">🚗</div>',
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
-      });
-
-      markers.driver = L.marker([location.latitude, location.longitude], { icon: driverIcon })
-        .addTo(map)
-        .bindPopup('Driver Location');
-    }
-
-    // Fetch Route
-    async function fetchRoute() {
-      if (!selectedRide) return;
-
-      const start = selectedRide.driverLocation || selectedRide.pickup;
-      const end = selectedRide.status === 'STARTED' ? selectedRide.dropoff : selectedRide.pickup;
-
-      try {
-        const response = await fetch(
-          `https://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson`
-        );
-        const data = await response.json();
-
-        if (data.code === 'Ok' && data.routes.length > 0) {
-          route = data.routes[0].geometry.coordinates.map(c => ({ latitude: c[1], longitude: c[0] }));
-          routeIndex = 0;
-
-          // Draw route
-          if (routeLine) map.removeLayer(routeLine);
-          routeLine = L.polyline(route.map(r => [r.latitude, r.longitude]), {
-            color: '#2196F3',
-            weight: 4,
-            opacity: 0.8
-          }).addTo(map);
-
-          addLog(`Route loaded: ${route.length} points`, 'info');
-        }
-      } catch (error) {
-        console.error('Error fetching route:', error);
-      }
-    }
-
-    // Send Driver Location
-    function sendDriverLocation(location) {
-      if (!selectedRide || !socket) return;
-
-      socket.emit('admin:updateDriverLocation', {
-        rideId: selectedRide.rideId,
-        location: location
-      });
-
-      updateDriverMarker(location);
-      selectedRide.driverLocation = location;
-    }
-
-    // Update Status
     async function updateStatus(status) {
       if (!selectedRide) return;
-
       try {
-        const response = await fetch(`${API_URL}/api/rides/${selectedRide.rideId}/status`, {
+        const res = await fetch(`${API_URL}/api/rides/${selectedRide.rideId}/status`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status })
         });
-
-        const data = await response.json();
-        if (data.success) {
-          addLog(`Status updated to ${status}`, 'success');
-          selectedRide.status = status;
-
-          if (status === 'STARTED') {
-            fetchRoute(); // Update route to dropoff
-          }
-
-          fetchRides();
-        } else {
-          addLog(`Failed to update status: ${data.message}`, 'error');
-        }
-      } catch (error) {
-        addLog(`Error updating status: ${error.message}`, 'error');
-      }
+        if ((await res.json()).success) { addLog(`Status: ${status}`, 'success'); fetchRides(); }
+      } catch (e) { addLog('Error updating status', 'error'); }
     }
 
-    // Cancel Ride
     async function cancelRide() {
-      if (!selectedRide) return;
-
-      if (!confirm('Are you sure you want to cancel this ride?')) return;
-
+      if (!selectedRide || !confirm('Cancel this ride?')) return;
       try {
-        const response = await fetch(`${API_URL}/api/rides/${selectedRide.rideId}/cancel`, {
+        await fetch(`${API_URL}/api/rides/${selectedRide.rideId}/cancel`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ reason: 'Cancelled by admin' })
         });
-
-        const data = await response.json();
-        if (data.success) {
-          addLog('Ride cancelled', 'warning');
-          selectedRide = null;
-          fetchRides();
-        }
-      } catch (error) {
-        addLog(`Error cancelling ride: ${error.message}`, 'error');
-      }
+        addLog('Ride cancelled', 'warning');
+        selectedRide = null;
+        fetchRides();
+      } catch (e) { addLog('Error cancelling', 'error'); }
     }
 
-    // Toggle Simulation
-    function toggleSimulation() {
-      if (isSimulating) {
-        stopSimulation();
-      } else {
-        startSimulation();
-      }
+    async function fetchDrivers() {
+      try {
+        const onDuty = document.getElementById('driverFilter').value;
+        const vehicle = document.getElementById('vehicleFilter').value;
+        let url = `${API_URL}/api/auth/drivers?`;
+        if (onDuty) url += `onDuty=${onDuty}&`;
+        if (vehicle) url += `vehicleType=${vehicle}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        drivers = data.data?.drivers || [];
+        renderDrivers();
+      } catch (e) { console.error(e); }
     }
 
-    // Start Simulation
-    function startSimulation() {
-      if (!selectedRide || route.length === 0) {
-        addLog('Cannot start simulation - no route', 'error');
+    function renderDrivers() {
+      const tbody = document.getElementById('driversTableBody');
+      if (drivers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">No drivers found</td></tr>';
         return;
       }
+      tbody.innerHTML = drivers.map(d => `
+        <tr>
+          <td><strong>${d.name}</strong></td>
+          <td>${d.phone}</td>
+          <td><span class="badge badge-info">${d.vehicle?.type || 'N/A'}</span> ${d.vehicle?.plateNumber || ''}</td>
+          <td><span class="badge ${d.isOnDuty ? 'badge-success' : 'badge-warning'}">${d.isOnDuty ? 'Online' : 'Offline'}</span></td>
+          <td>${d.totalRides}</td>
+          <td>₹${d.earnings.toLocaleString()}</td>
+          <td>⭐ ${d.rating.toFixed(1)}</td>
+          <td class="user-actions">
+            <button class="btn btn-sm btn-secondary" onclick="editUser('${d.id}', 'driver')">✏️</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteUser('${d.id}')">🗑️</button>
+          </td>
+        </tr>
+      `).join('');
+    }
 
-      isSimulating = true;
-      document.getElementById('btnSimulate').innerHTML = '⏸️ Stop Simulation';
+    function searchDrivers() {
+      const search = document.getElementById('driverSearch').value.toLowerCase();
+      const filtered = drivers.filter(d => d.name.toLowerCase().includes(search) || d.phone.includes(search));
+      const tbody = document.getElementById('driversTableBody');
+      tbody.innerHTML = filtered.map(d => `
+        <tr>
+          <td><strong>${d.name}</strong></td>
+          <td>${d.phone}</td>
+          <td><span class="badge badge-info">${d.vehicle?.type || 'N/A'}</span></td>
+          <td><span class="badge ${d.isOnDuty ? 'badge-success' : 'badge-warning'}">${d.isOnDuty ? 'Online' : 'Offline'}</span></td>
+          <td>${d.totalRides}</td>
+          <td>₹${d.earnings.toLocaleString()}</td>
+          <td>⭐ ${d.rating.toFixed(1)}</td>
+          <td class="user-actions">
+            <button class="btn btn-sm btn-secondary" onclick="editUser('${d.id}', 'driver')">✏️</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteUser('${d.id}')">🗑️</button>
+          </td>
+        </tr>
+      `).join('');
+    }
 
-      const speed = parseInt(document.getElementById('speedSlider').value);
+    async function fetchUsers() {
+      try {
+        const role = document.getElementById('roleFilter').value;
+        let url = `${API_URL}/api/auth/users?`;
+        if (role) url += `role=${role}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        users = data.data?.users || [];
+        renderUsers();
+      } catch (e) { console.error(e); }
+    }
 
-      simulationInterval = setInterval(() => {
-        if (routeIndex >= route.length) {
-          stopSimulation();
-          addLog('Simulation complete - driver reached destination', 'success');
-          return;
+    function renderUsers() {
+      const tbody = document.getElementById('usersTableBody');
+      if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;">No users found</td></tr>';
+        return;
+      }
+      tbody.innerHTML = users.map(u => `
+        <tr>
+          <td><strong>${u.name}</strong></td>
+          <td>${u.phone}</td>
+          <td>${u.role.map(r => `<span class="badge badge-${r === 'rider' ? 'success' : 'info'}">${r}</span>`).join(' ')}</td>
+          <td>${u.riderProfile?.totalRides || u.customerProfile?.totalRides || 0}</td>
+          <td>⭐ ${(u.riderProfile?.rating || u.customerProfile?.rating || 5).toFixed(1)}</td>
+          <td>${new Date(u.createdAt).toLocaleDateString()}</td>
+          <td class="user-actions">
+            <button class="btn btn-sm btn-secondary" onclick="editUser('${u.id}')">✏️</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}')">🗑️</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function searchUsers() {
+      const search = document.getElementById('userSearch').value.toLowerCase();
+      const filtered = users.filter(u => u.name.toLowerCase().includes(search) || u.phone.includes(search));
+      const tbody = document.getElementById('usersTableBody');
+      tbody.innerHTML = filtered.map(u => `
+        <tr>
+          <td><strong>${u.name}</strong></td>
+          <td>${u.phone}</td>
+          <td>${u.role.map(r => `<span class="badge badge-${r === 'rider' ? 'success' : 'info'}">${r}</span>`).join(' ')}</td>
+          <td>${u.riderProfile?.totalRides || u.customerProfile?.totalRides || 0}</td>
+          <td>⭐ ${(u.riderProfile?.rating || u.customerProfile?.rating || 5).toFixed(1)}</td>
+          <td>${new Date(u.createdAt).toLocaleDateString()}</td>
+          <td class="user-actions">
+            <button class="btn btn-sm btn-secondary" onclick="editUser('${u.id}')">✏️</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}')">🗑️</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function editUser(userId, type) {
+      try {
+        const res = await fetch(`${API_URL}/api/auth/users/${userId}`);
+        const data = await res.json();
+        const user = data.data?.user;
+        if (!user) return alert('User not found');
+
+        document.getElementById('editUserId').value = userId;
+        document.getElementById('editUserName').value = user.name;
+        document.getElementById('editUserPhone').value = user.phone;
+
+        const isRider = user.role.includes('rider');
+        document.getElementById('riderFields').style.display = isRider ? 'block' : 'none';
+        if (isRider) {
+          document.getElementById('editUserEarnings').value = user.riderProfile?.earnings || 0;
+          document.getElementById('editUserRides').value = user.riderProfile?.totalRides || 0;
         }
 
-        sendDriverLocation(route[routeIndex]);
-        routeIndex++;
-      }, speed);
-
-      addLog('Simulation started', 'info');
+        document.getElementById('editUserModal').classList.add('active');
+      } catch (e) { alert('Error loading user'); }
     }
 
-    // Stop Simulation
-    function stopSimulation() {
-      isSimulating = false;
-      document.getElementById('btnSimulate').innerHTML = '▶️ Start Simulation';
-      if (simulationInterval) {
-        clearInterval(simulationInterval);
-        simulationInterval = null;
-      }
-      addLog('Simulation stopped', 'info');
-    }
+    async function saveUser(e) {
+      e.preventDefault();
+      const userId = document.getElementById('editUserId').value;
+      const updates = {
+        name: document.getElementById('editUserName').value,
+        phone: document.getElementById('editUserPhone').value
+      };
 
-    // Move Driver
-    function moveDriver(direction) {
-      if (!route.length) return;
-
-      if (direction === 'forward') {
-        routeIndex = Math.min(routeIndex + 1, route.length - 1);
-      } else {
-        routeIndex = Math.max(routeIndex - 1, 0);
+      if (document.getElementById('riderFields').style.display !== 'none') {
+        updates['riderProfile.earnings'] = parseInt(document.getElementById('editUserEarnings').value) || 0;
+        updates['riderProfile.totalRides'] = parseInt(document.getElementById('editUserRides').value) || 0;
       }
 
-      sendDriverLocation(route[routeIndex]);
+      try {
+        const res = await fetch(`${API_URL}/api/auth/users/${userId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates)
+        });
+        if ((await res.json()).success) {
+          closeModal('editUserModal');
+          fetchUsers();
+          fetchDrivers();
+          addLog('User updated', 'success');
+        }
+      } catch (e) { alert('Error saving user'); }
     }
 
-    // Add Log
+    async function deleteUser(userId) {
+      if (!confirm('Are you sure you want to delete this user? This cannot be undone.')) return;
+      try {
+        const res = await fetch(`${API_URL}/api/auth/users/${userId}`, { method: 'DELETE' });
+        if ((await res.json()).success) {
+          fetchUsers();
+          fetchDrivers();
+          addLog('User deleted', 'warning');
+        }
+      } catch (e) { alert('Error deleting user'); }
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+    }
+
     function addLog(message, type = 'info') {
-      const container = document.getElementById('logContainer');
+      const container = document.getElementById('activityLog');
       const time = new Date().toLocaleTimeString();
       const entry = document.createElement('div');
       entry.className = `log-entry ${type}`;
       entry.textContent = `[${time}] ${message}`;
       container.insertBefore(entry, container.firstChild);
-
-      // Keep only last 50 logs
-      while (container.children.length > 50) {
-        container.removeChild(container.lastChild);
-      }
+      while (container.children.length > 50) container.removeChild(container.lastChild);
     }
   </script>
 </body>
