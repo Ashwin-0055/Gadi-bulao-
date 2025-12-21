@@ -83,7 +83,10 @@ export default function PhoneLoginScreen() {
       Alert.alert('OTP Sent', `Verification code sent to ${formattedPhone}`);
     } catch (err: any) {
       console.error('Send OTP error:', err);
-      let errorMessage = 'Failed to send OTP. Please try again.';
+      console.error('Error code:', err.code);
+      console.error('Error message:', err.message);
+
+      let errorMessage = err.message || 'Failed to send OTP. Please try again.';
 
       if (err.code === 'auth/invalid-phone-number') {
         errorMessage = 'Invalid phone number format.';
@@ -91,10 +94,14 @@ export default function PhoneLoginScreen() {
         errorMessage = 'Too many requests. Please try again later.';
       } else if (err.code === 'auth/quota-exceeded') {
         errorMessage = 'SMS quota exceeded. Please try again later.';
+      } else if (err.code === 'auth/app-not-authorized') {
+        errorMessage = 'App not authorized. Check SHA-1 fingerprint in Firebase.';
+      } else if (err.code === 'auth/missing-client-identifier') {
+        errorMessage = 'Missing client identifier. Check Firebase setup.';
       }
 
       setError(errorMessage);
-      Alert.alert('Error', errorMessage);
+      Alert.alert('Error', `${err.code || 'Unknown'}: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
