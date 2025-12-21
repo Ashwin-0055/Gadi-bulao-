@@ -46,3 +46,5 @@ mobile/web-build/
 server/node_modules/
 server/.env
 .claude/
+mobile/google-services.json
+mobile/GoogleService-Info.plist
