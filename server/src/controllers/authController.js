@@ -101,6 +101,7 @@ const phoneLogin = async (req, res) => {
           name: user.name,
           role: user.role,
           activeRole: user.activeRole,
+          customerProfile: user.customerProfile,
           riderProfile: user.riderProfile
         },
         tokens

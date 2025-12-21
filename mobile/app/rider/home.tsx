@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -20,6 +20,7 @@ import { useRiderStore } from '../../src/store/riderStore';
 import { useUserStore } from '../../src/store/userStore';
 import { useSocket } from '../../src/context/WSProvider';
 import { Location } from '../../src/types';
+import { api } from '../../src/services/apiClient';
 
 export default function RiderHome() {
   const router = useRouter();
@@ -36,13 +37,61 @@ export default function RiderHome() {
     removeRideRequest,
     clearRideRequests,
     setActiveRide,
+    updateStats,
   } = useRiderStore();
 
-  const { user, logout } = useUserStore();
+  const { user, logout, updateUser } = useUserStore();
 
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const [locationWatcher, setLocationWatcher] = useState<ExpoLocation.LocationSubscription | null>(null);
+
+  // Fetch latest profile from server and update stats
+  const refreshProfile = useCallback(async () => {
+    try {
+      const response = await api.auth.getProfile();
+      if (response.data?.success && response.data?.data?.user) {
+        const serverUser = response.data.data.user;
+
+        // Update user store with fresh data
+        await updateUser({
+          riderProfile: serverUser.riderProfile,
+          customerProfile: serverUser.customerProfile,
+        });
+
+        // Update rider stats
+        if (serverUser.riderProfile) {
+          updateStats({
+            totalRides: serverUser.riderProfile.totalRides || 0,
+            earnings: serverUser.riderProfile.earnings || 0,
+            rating: serverUser.riderProfile.rating || 5.0,
+          });
+          console.log('📊 Refreshed rider stats from server:', {
+            totalRides: serverUser.riderProfile.totalRides,
+            earnings: serverUser.riderProfile.earnings,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to refresh profile:', error);
+    }
+  }, [updateStats, updateUser]);
+
+  // Load rider stats from server on mount
+  useEffect(() => {
+    refreshProfile();
+  }, []);
+
+  // Also sync from local user profile as fallback
+  useEffect(() => {
+    if (user?.riderProfile) {
+      updateStats({
+        totalRides: user.riderProfile.totalRides || 0,
+        earnings: user.riderProfile.earnings || 0,
+        rating: user.riderProfile.rating || 5.0,
+      });
+    }
+  }, [user?.riderProfile]);
 
   // Get initial location on mount
   useEffect(() => {

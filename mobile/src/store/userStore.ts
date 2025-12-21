@@ -26,6 +26,13 @@ export interface UserProfile {
   riderProfile?: {
     rating: number;
     totalRides: number;
+    earnings: number;
+    vehicle?: {
+      type: string;
+      model: string;
+      plateNumber: string;
+      color: string;
+    };
   };
 }
 
