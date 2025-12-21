@@ -85,6 +85,25 @@ export const api = {
     }),
 
     getProfile: () => fetchApi('/api/auth/profile'),
+
+    // Clerk authentication endpoints
+    clerkSync: (data: { phone: string; role: string; clerkToken: string | null }) =>
+      fetchApi('/api/auth/clerk-sync', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    clerkRegister: (data: {
+      phone: string;
+      name: string;
+      role: string;
+      clerkToken: string | null;
+      vehicle?: any;
+    }) =>
+      fetchApi('/api/auth/clerk-register', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
   },
 
   rides: {

@@ -1,4 +1,8 @@
-import { useState } from 'react';
+/**
+ * Phone Login Screen with Clerk OTP Authentication
+ */
+
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,24 +13,36 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSignUp, useSignIn, useAuth } from '@clerk/clerk-expo';
 import { PhoneInput } from '../../src/components/shared/PhoneInput';
 import { CustomButton } from '../../src/components/shared/CustomButton';
 import { Colors } from '../../src/constants/colors';
 import { api } from '../../src/services/apiClient';
 import { useUserStore } from '../../src/store/userStore';
 
+type Step = 'phone' | 'otp' | 'name' | 'vehicle';
+
 export default function PhoneLoginScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ role?: string }>();
   const role = (params.role || 'customer') as 'customer' | 'rider';
 
+  // Clerk hooks
+  const { signUp, isLoaded: signUpLoaded, setActive } = useSignUp();
+  const { signIn, isLoaded: signInLoaded } = useSignIn();
+  const { isSignedIn, getToken } = useAuth();
+
+  // State
   const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
-  const [step, setStep] = useState<'phone' | 'name' | 'vehicle'>('phone');
+  const [step, setStep] = useState<Step>('phone');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isNewUser, setIsNewUser] = useState(false);
 
   // Vehicle details for riders
   const [vehicleType, setVehicleType] = useState<'bike' | 'auto' | 'cab'>('cab');
@@ -36,35 +52,138 @@ export default function PhoneLoginScreen() {
 
   const login = useUserStore((state) => state.login);
 
-  const validatePhone = () => {
+  // Format phone for Clerk (E.164 format)
+  const formatPhoneForClerk = (phoneNumber: string) => {
+    const cleaned = phoneNumber.replace(/\D/g, '');
+    // Add +91 for India
+    if (cleaned.length === 10) {
+      return `+91${cleaned}`;
+    }
+    if (cleaned.startsWith('91') && cleaned.length === 12) {
+      return `+${cleaned}`;
+    }
+    return `+91${cleaned}`;
+  };
+
+  // Send OTP
+  const handleSendOTP = async () => {
     if (phone.length < 10) {
       setError('Please enter a valid 10-digit phone number');
-      return false;
+      return;
     }
+
+    setLoading(true);
     setError('');
-    return true;
-  };
 
-  const handlePhoneSubmit = () => {
-    if (validatePhone()) {
-      setStep('name');
+    try {
+      const formattedPhone = formatPhoneForClerk(phone);
+
+      // First try to sign in (existing user)
+      try {
+        const signInAttempt = await signIn?.create({
+          identifier: formattedPhone,
+        });
+
+        // Prepare phone verification
+        await signIn?.prepareFirstFactor({
+          strategy: 'phone_code',
+          phoneNumberId: signInAttempt?.supportedFirstFactors?.find(
+            (factor: any) => factor.strategy === 'phone_code'
+          )?.phoneNumberId,
+        });
+
+        setIsNewUser(false);
+        setStep('otp');
+      } catch (signInError: any) {
+        // User doesn't exist, create new account
+        if (signInError?.errors?.[0]?.code === 'form_identifier_not_found') {
+          await signUp?.create({
+            phoneNumber: formattedPhone,
+          });
+
+          await signUp?.preparePhoneNumberVerification({
+            strategy: 'phone_code',
+          });
+
+          setIsNewUser(true);
+          setStep('otp');
+        } else {
+          throw signInError;
+        }
+      }
+    } catch (err: any) {
+      console.error('Send OTP error:', err);
+      const errorMessage = err?.errors?.[0]?.message || 'Failed to send OTP. Please try again.';
+      setError(errorMessage);
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Verify OTP
+  const handleVerifyOTP = async () => {
+    if (otp.length !== 6) {
+      setError('Please enter the 6-digit OTP');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      if (isNewUser) {
+        // New user - verify signup
+        const result = await signUp?.attemptPhoneNumberVerification({
+          code: otp,
+        });
+
+        if (result?.status === 'complete') {
+          await setActive?.({ session: result.createdSessionId });
+          setStep('name'); // New user needs to enter name
+        } else {
+          throw new Error('Verification incomplete');
+        }
+      } else {
+        // Existing user - verify signin
+        const result = await signIn?.attemptFirstFactor({
+          strategy: 'phone_code',
+          code: otp,
+        });
+
+        if (result?.status === 'complete') {
+          await setActive?.({ session: result.createdSessionId });
+          // Existing user - sync with backend and go to home
+          await syncWithBackend();
+        } else {
+          throw new Error('Verification incomplete');
+        }
+      }
+    } catch (err: any) {
+      console.error('Verify OTP error:', err);
+      const errorMessage = err?.errors?.[0]?.message || 'Invalid OTP. Please try again.';
+      setError(errorMessage);
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle name submission
   const handleNameSubmit = () => {
     if (!name.trim()) {
       Alert.alert('Error', 'Please enter your name');
       return;
     }
-    // For riders, go to vehicle registration step
+
     if (role === 'rider') {
       setStep('vehicle');
     } else {
-      // For customers, login directly
-      handleLogin();
+      completeRegistration();
     }
   };
 
+  // Validate vehicle details
   const validateVehicleDetails = () => {
     if (!vehicleNumber.trim()) {
       Alert.alert('Error', 'Please enter your vehicle number');
@@ -77,12 +196,47 @@ export default function PhoneLoginScreen() {
     return true;
   };
 
-  const handleLogin = async () => {
-    if (!name.trim()) {
-      Alert.alert('Error', 'Please enter your name');
-      return;
-    }
+  // Sync existing user with backend
+  const syncWithBackend = async () => {
+    setLoading(true);
+    try {
+      const token = await getToken();
+      const cleanPhone = phone.replace(/\D/g, '').slice(-10);
 
+      const response = await api.auth.clerkSync({
+        phone: cleanPhone,
+        role,
+        clerkToken: token,
+      });
+
+      if (response.data?.success) {
+        const { tokens, user } = response.data.data;
+        await login(tokens, user);
+
+        setTimeout(() => {
+          if (user.activeRole === 'customer') {
+            router.replace('/customer/home');
+          } else {
+            router.replace('/rider/home');
+          }
+        }, 100);
+      } else {
+        // User exists in Clerk but not in our backend - need to register
+        setIsNewUser(true);
+        setStep('name');
+      }
+    } catch (err: any) {
+      console.error('Sync error:', err);
+      // If sync fails, treat as new user
+      setIsNewUser(true);
+      setStep('name');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Complete registration for new users
+  const completeRegistration = async () => {
     if (role === 'rider' && !validateVehicleDetails()) {
       return;
     }
@@ -91,16 +245,18 @@ export default function PhoneLoginScreen() {
     setError('');
 
     try {
-      const cleanPhone = phone.replace(/^\+91/, '').replace(/^91/, '').trim();
+      const token = await getToken();
+      const cleanPhone = phone.replace(/\D/g, '').slice(-10);
 
-      const loginPayload: any = {
+      const registerPayload: any = {
         phone: cleanPhone,
         name: name.trim(),
         role,
+        clerkToken: token,
       };
 
       if (role === 'rider') {
-        loginPayload.vehicle = {
+        registerPayload.vehicle = {
           type: vehicleType,
           model: vehicleModel.trim(),
           plateNumber: vehicleNumber.trim().toUpperCase(),
@@ -108,11 +264,10 @@ export default function PhoneLoginScreen() {
         };
       }
 
-      const response = await api.auth.login(loginPayload);
+      const response = await api.auth.clerkRegister(registerPayload);
 
-      if (response.data && response.data.data) {
+      if (response.data?.success) {
         const { tokens, user } = response.data.data;
-
         await login(tokens, user);
 
         setTimeout(() => {
@@ -123,21 +278,13 @@ export default function PhoneLoginScreen() {
           }
         }, 100);
       } else {
-        throw new Error('Invalid response from server');
+        throw new Error(response.data?.message || 'Registration failed');
       }
     } catch (err: any) {
-      let errorMessage = 'Login failed. Please try again.';
-
-      if (err.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (err.message === 'Network Error') {
-        errorMessage = 'Unable to connect to server. Please check your internet connection.';
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-
+      console.error('Registration error:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Registration failed';
       setError(errorMessage);
-      Alert.alert('Login Failed', errorMessage);
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -147,6 +294,8 @@ export default function PhoneLoginScreen() {
     switch (step) {
       case 'phone':
         return 'Enter your phone number';
+      case 'otp':
+        return 'Enter verification code';
       case 'name':
         return "What's your name?";
       case 'vehicle':
@@ -159,11 +308,13 @@ export default function PhoneLoginScreen() {
   const getSubtitle = () => {
     switch (step) {
       case 'phone':
-        return "We'll send you a verification code";
+        return "We'll send you a verification code via SMS";
+      case 'otp':
+        return `Enter the 6-digit code sent to +91 ${phone}`;
       case 'name':
         return 'This will be shown to your ' + (role === 'customer' ? 'driver' : 'customers');
       case 'vehicle':
-        return 'Enter your vehicle information so customers can find you';
+        return 'Enter your vehicle information';
       default:
         return '';
     }
@@ -173,7 +324,10 @@ export default function PhoneLoginScreen() {
     if (step === 'vehicle') {
       setStep('name');
     } else if (step === 'name') {
+      setStep('otp');
+    } else if (step === 'otp') {
       setStep('phone');
+      setOtp('');
     } else {
       router.back();
     }
@@ -182,11 +336,13 @@ export default function PhoneLoginScreen() {
   const getButtonTitle = () => {
     switch (step) {
       case 'phone':
-        return 'Continue';
+        return 'Send OTP';
+      case 'otp':
+        return 'Verify OTP';
       case 'name':
-        return role === 'rider' ? 'Continue' : 'Login';
+        return role === 'rider' ? 'Continue' : 'Complete';
       case 'vehicle':
-        return 'Register & Login';
+        return 'Register';
       default:
         return 'Continue';
     }
@@ -195,13 +351,15 @@ export default function PhoneLoginScreen() {
   const getButtonAction = () => {
     switch (step) {
       case 'phone':
-        return handlePhoneSubmit;
+        return handleSendOTP;
+      case 'otp':
+        return handleVerifyOTP;
       case 'name':
         return handleNameSubmit;
       case 'vehicle':
-        return handleLogin;
+        return completeRegistration;
       default:
-        return handlePhoneSubmit;
+        return handleSendOTP;
     }
   };
 
@@ -209,6 +367,8 @@ export default function PhoneLoginScreen() {
     switch (step) {
       case 'phone':
         return phone.length < 10;
+      case 'otp':
+        return otp.length !== 6;
       case 'name':
         return !name.trim();
       case 'vehicle':
@@ -217,6 +377,15 @@ export default function PhoneLoginScreen() {
         return false;
     }
   };
+
+  if (!signUpLoaded || !signInLoaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -244,6 +413,31 @@ export default function PhoneLoginScreen() {
                 error={error}
                 autoFocus
               />
+            )}
+
+            {step === 'otp' && (
+              <View style={styles.otpContainer}>
+                <View style={styles.otpInputContainer}>
+                  <TextInput
+                    value={otp}
+                    onChangeText={(text) => setOtp(text.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="000000"
+                    placeholderTextColor={Colors.textMuted}
+                    style={styles.otpInput}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    autoFocus
+                  />
+                </View>
+                {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                <TouchableOpacity
+                  onPress={handleSendOTP}
+                  style={styles.resendButton}
+                  disabled={loading}
+                >
+                  <Text style={styles.resendText}>Didn't receive code? Resend</Text>
+                </TouchableOpacity>
+              </View>
             )}
 
             {step === 'name' && (
@@ -329,7 +523,7 @@ export default function PhoneLoginScreen() {
                   </View>
                 </View>
 
-                {/* Vehicle Color (Optional) */}
+                {/* Vehicle Color */}
                 <View style={styles.vehicleInput}>
                   <Text style={styles.inputLabel}>Vehicle Color (Optional)</Text>
                   <View style={styles.nameInputField}>
@@ -372,6 +566,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: Colors.textSecondary,
+  },
   content: {
     flex: 1,
     padding: 20,
@@ -402,6 +607,40 @@ const styles = StyleSheet.create({
   inputSection: {
     flex: 1,
     justifyContent: 'center',
+  },
+  otpContainer: {
+    alignItems: 'center',
+    gap: 16,
+  },
+  otpInputContainer: {
+    width: '100%',
+    maxWidth: 280,
+  },
+  otpInput: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    letterSpacing: 16,
+    color: Colors.textPrimary,
+    backgroundColor: Colors.gray100,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.gray200,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    color: Colors.error || '#DC2626',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  resendButton: {
+    marginTop: 8,
+  },
+  resendText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
   },
   nameInputContainer: {
     gap: 20,

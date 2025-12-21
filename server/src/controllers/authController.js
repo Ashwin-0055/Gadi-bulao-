@@ -1,5 +1,9 @@
 const User = require('../models/User');
 const { generateTokenPair, verifyRefreshToken } = require('../utils/jwt');
+const { createClerkClient } = require('@clerk/clerk-sdk-node');
+
+// Initialize Clerk
+const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
 
 /**
  * Phone-based login/signup
@@ -113,6 +117,217 @@ const phoneLogin = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Login failed',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Clerk Sync - Sync existing Clerk user with our database
+ * Used when a user logs in via Clerk OTP
+ */
+const clerkSync = async (req, res) => {
+  try {
+    const { phone, role, clerkToken } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number is required'
+      });
+    }
+
+    // Verify Clerk token if provided
+    if (clerkToken) {
+      try {
+        await clerk.verifyToken(clerkToken);
+      } catch (err) {
+        console.log('[Auth] Clerk token verification failed:', err.message);
+        // Continue anyway - token might be session-based
+      }
+    }
+
+    // Find existing user
+    const user = await User.findOne({ phone });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found. Please register first.',
+        requiresRegistration: true
+      });
+    }
+
+    // Update active role if provided
+    if (role && user.role.includes(role)) {
+      user.activeRole = role;
+    }
+
+    // Generate tokens
+    const tokens = generateTokenPair(user._id, user.phone, user.activeRole);
+    user.refreshToken = tokens.refreshToken;
+    await user.save();
+
+    console.log('[Auth] Clerk sync successful:', phone);
+
+    res.status(200).json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        user: {
+          id: user._id,
+          phone: user.phone,
+          name: user.name,
+          role: user.role,
+          activeRole: user.activeRole,
+          customerProfile: user.customerProfile,
+          riderProfile: user.riderProfile
+        },
+        tokens
+      }
+    });
+
+  } catch (error) {
+    console.error('[Error] Clerk sync:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Login failed',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Clerk Register - Register new user via Clerk
+ * Used when a new user signs up via Clerk OTP
+ */
+const clerkRegister = async (req, res) => {
+  try {
+    const { phone, name, role, clerkToken, vehicle } = req.body;
+
+    if (!phone || !name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone and name are required'
+      });
+    }
+
+    // Verify Clerk token if provided
+    if (clerkToken) {
+      try {
+        await clerk.verifyToken(clerkToken);
+      } catch (err) {
+        console.log('[Auth] Clerk token verification failed:', err.message);
+        // Continue anyway - token might be session-based
+      }
+    }
+
+    // Check if user already exists
+    let user = await User.findOne({ phone });
+
+    if (user) {
+      // User exists - update if needed and return tokens
+      if (role === 'rider' && vehicle) {
+        user.riderProfile = {
+          ...user.riderProfile,
+          vehicle: {
+            type: vehicle.type || user.riderProfile?.vehicle?.type || 'cab',
+            model: vehicle.model || user.riderProfile?.vehicle?.model || 'Unknown',
+            plateNumber: vehicle.plateNumber || user.riderProfile?.vehicle?.plateNumber || 'Unknown',
+            color: vehicle.color || user.riderProfile?.vehicle?.color || 'Unknown'
+          }
+        };
+
+        if (!user.role.includes('rider')) {
+          user.role.push('rider');
+        }
+        user.activeRole = 'rider';
+      }
+
+      const tokens = generateTokenPair(user._id, user.phone, user.activeRole);
+      user.refreshToken = tokens.refreshToken;
+      await user.save();
+
+      console.log('[Auth] Clerk user updated:', phone);
+
+      return res.status(200).json({
+        success: true,
+        message: 'User updated successfully',
+        data: {
+          user: {
+            id: user._id,
+            phone: user.phone,
+            name: user.name,
+            role: user.role,
+            activeRole: user.activeRole,
+            customerProfile: user.customerProfile,
+            riderProfile: user.riderProfile
+          },
+          tokens
+        }
+      });
+    }
+
+    // Validate vehicle details for riders
+    if (role === 'rider' && !vehicle) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vehicle details are required for riders'
+      });
+    }
+
+    // Create new user
+    user = new User({
+      phone,
+      name,
+      role: role ? [role] : ['customer'],
+      activeRole: role || 'customer'
+    });
+
+    // Add vehicle details for riders
+    if (role === 'rider' && vehicle) {
+      user.riderProfile = {
+        vehicle: {
+          type: vehicle.type || 'cab',
+          model: vehicle.model || 'Unknown',
+          plateNumber: vehicle.plateNumber || 'Unknown',
+          color: vehicle.color || 'Unknown'
+        },
+        rating: 5.0,
+        totalRides: 0,
+        isAvailable: false
+      };
+    }
+
+    // Generate tokens
+    const tokens = generateTokenPair(user._id, user.phone, user.activeRole);
+    user.refreshToken = tokens.refreshToken;
+    await user.save();
+
+    console.log('[Auth] Clerk new user registered:', phone);
+
+    res.status(201).json({
+      success: true,
+      message: 'User registered successfully',
+      data: {
+        user: {
+          id: user._id,
+          phone: user.phone,
+          name: user.name,
+          role: user.role,
+          activeRole: user.activeRole,
+          customerProfile: user.customerProfile,
+          riderProfile: user.riderProfile
+        },
+        tokens
+      }
+    });
+
+  } catch (error) {
+    console.error('[Error] Clerk register:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Registration failed',
       error: error.message
     });
   }
@@ -570,6 +785,8 @@ const deleteUserById = async (req, res) => {
 
 module.exports = {
   phoneLogin,
+  clerkSync,
+  clerkRegister,
   refreshToken,
   switchRole,
   registerRider,

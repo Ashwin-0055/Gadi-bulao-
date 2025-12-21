@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const {
   phoneLogin,
+  clerkSync,
+  clerkRegister,
   refreshToken,
   switchRole,
   registerRider,
@@ -55,6 +57,20 @@ router.delete('/users/:userId', deleteUserById);
  * @access  Public
  */
 router.post('/login', phoneLogin);
+
+/**
+ * @route   POST /api/auth/clerk-sync
+ * @desc    Sync existing Clerk user with database (login)
+ * @access  Public
+ */
+router.post('/clerk-sync', clerkSync);
+
+/**
+ * @route   POST /api/auth/clerk-register
+ * @desc    Register new user via Clerk
+ * @access  Public
+ */
+router.post('/clerk-register', clerkRegister);
 
 /**
  * @route   POST /api/auth/refresh
