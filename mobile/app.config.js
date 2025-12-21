@@ -1,0 +1,72 @@
+module.exports = {
+  expo: {
+    name: "Gadi Bulao",
+    slug: "gadi-bulao",
+    version: "1.0.0",
+    sdkVersion: "54.0.0",
+    runtimeVersion: "1.0.0",
+    orientation: "portrait",
+    icon: "./assets/icon.png",
+    userInterfaceStyle: "light",
+    newArchEnabled: true,
+    updates: {
+      enabled: false
+    },
+    splash: {
+      image: "./assets/splash.png",
+      resizeMode: "contain",
+      backgroundColor: "#2E7D32"
+    },
+    assetBundlePatterns: ["**/*"],
+    ios: {
+      supportsTablet: true,
+      bundleIdentifier: "com.gadibulao.app",
+      infoPlist: {
+        NSLocationWhenInUseUsageDescription: "We need your location to show nearby drivers and provide ride services.",
+        NSLocationAlwaysAndWhenInUseUsageDescription: "We need your location in the background to track your ride.",
+        NSLocationAlwaysUsageDescription: "We need your location in the background to track your ride.",
+        UIBackgroundModes: ["location"]
+      },
+      config: {
+        googleMapsApiKey: "AIzaSyDvnJHejt7MNC28PJ8ytkPVxiv4opxdnpY"
+      }
+    },
+    android: {
+      adaptiveIcon: {
+        foregroundImage: "./assets/adaptive-icon.png",
+        backgroundColor: "#2E7D32"
+      },
+      package: "com.gadibulao.app",
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
+      permissions: [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ],
+      config: {
+        googleMaps: {
+          apiKey: "AIzaSyDvnJHejt7MNC28PJ8ytkPVxiv4opxdnpY"
+        }
+      }
+    },
+    web: {},
+    plugins: [
+      "expo-router",
+      "expo-location",
+      "expo-font",
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth"
+    ],
+    scheme: "gadibulao",
+    experiments: {
+      typedRoutes: true
+    },
+    extra: {
+      router: {},
+      eas: {
+        projectId: "f93c97e5-62f8-4c7b-af66-cc528011d384"
+      }
+    },
+    owner: "ashwin.yadav"
+  }
+};
