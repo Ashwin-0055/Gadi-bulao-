@@ -9,15 +9,24 @@ const nodemailer = require('nodemailer');
 
 // Create email transporter
 const createEmailTransporter = () => {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  const config = {
+    host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
     port: parseInt(process.env.SMTP_PORT) || 587,
-    secure: false, // true for 465, false for other ports
+    secure: false,
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
-  });
+    tls: {
+      rejectUnauthorized: false
+    },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
+  };
+
+  console.log('[SMTP] Configuring with host:', config.host, 'port:', config.port);
+  return nodemailer.createTransport(config);
 };
 
 // Generate 6-digit OTP
