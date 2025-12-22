@@ -1,28 +1,417 @@
 const User = require('../models/User');
 const { generateTokenPair, verifyRefreshToken } = require('../utils/jwt');
-const admin = require('firebase-admin');
+const bcrypt = require('bcryptjs');
+const nodemailer = require('nodemailer');
 
-// Initialize Firebase Admin
-if (!admin.apps.length) {
-  // Handle private key - replace escaped newlines with actual newlines
-  let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
-  // Handle both \\n and \n formats
-  privateKey = privateKey.replace(/\\n/g, '\n').replace(/\n/g, '\n');
+// ============================================
+// EMAIL OTP CONFIGURATION
+// ============================================
 
+// Create email transporter
+const createEmailTransporter = () => {
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT) || 587,
+    secure: false, // true for 465, false for other ports
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+};
+
+// Generate 6-digit OTP
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+// Hash OTP for secure storage
+const hashOTP = async (otp) => {
+  const salt = await bcrypt.genSalt(10);
+  return bcrypt.hash(otp, salt);
+};
+
+// Verify OTP against hash
+const verifyOTPHash = async (otp, hash) => {
+  return bcrypt.compare(otp, hash);
+};
+
+// ============================================
+// SECURITY CONSTANTS
+// ============================================
+const OTP_EXPIRY_MINUTES = 5;
+const MAX_OTP_ATTEMPTS = 5;
+const MAX_OTP_REQUESTS = 3;
+const OTP_RATE_LIMIT_MINUTES = 10;
+const OTP_LOCK_MINUTES = 30;
+
+// ============================================
+// SEND OTP - With Full Security
+// ============================================
+/**
+ * Send OTP to email
+ * Security: Rate limiting, OTP hashing, expiry
+ */
+const sendOtp = async (req, res) => {
   try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: privateKey,
-      }),
+    const { email } = req.body;
+
+    // 1. Validate email format
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid email format'
+      });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // 2. Find or create temporary user record for OTP
+    let user = await User.findOne({ email: normalizedEmail });
+
+    // For new users, we'll create a temporary record
+    if (!user) {
+      user = new User({
+        email: normalizedEmail,
+        name: 'Pending', // Will be updated after verification
+        role: ['customer'],
+        activeRole: 'customer'
+      });
+    }
+
+    // 3. Check if user is locked due to too many attempts
+    if (user.isOtpLocked && user.otpLockUntil) {
+      if (new Date() < user.otpLockUntil) {
+        const remainingMinutes = Math.ceil((user.otpLockUntil - new Date()) / (1000 * 60));
+        return res.status(429).json({
+          success: false,
+          message: `Too many failed attempts. Try again in ${remainingMinutes} minutes.`,
+          lockedUntil: user.otpLockUntil
+        });
+      } else {
+        // Lock expired, reset
+        user.isOtpLocked = false;
+        user.otpLockUntil = null;
+        user.otpAttempts = 0;
+      }
+    }
+
+    // 4. Rate limiting - Max 3 OTP requests per 10 minutes
+    const now = new Date();
+    if (user.otpRequestWindowStart) {
+      const windowStart = new Date(user.otpRequestWindowStart);
+      const windowEnd = new Date(windowStart.getTime() + OTP_RATE_LIMIT_MINUTES * 60 * 1000);
+
+      if (now < windowEnd) {
+        // Still within rate limit window
+        if (user.otpRequestCount >= MAX_OTP_REQUESTS) {
+          const remainingMinutes = Math.ceil((windowEnd - now) / (1000 * 60));
+          return res.status(429).json({
+            success: false,
+            message: `Too many OTP requests. Try again in ${remainingMinutes} minutes.`,
+            retryAfter: remainingMinutes
+          });
+        }
+        user.otpRequestCount += 1;
+      } else {
+        // Window expired, start new window
+        user.otpRequestWindowStart = now;
+        user.otpRequestCount = 1;
+      }
+    } else {
+      // First request
+      user.otpRequestWindowStart = now;
+      user.otpRequestCount = 1;
+    }
+
+    // 5. Generate OTP
+    const otp = generateOTP();
+    console.log(`[OTP] Generated for ${normalizedEmail}: ${otp}`); // Remove in production
+
+    // 6. Hash OTP before storing (security)
+    const hashedOtp = await hashOTP(otp);
+    user.otp = hashedOtp;
+    user.otpExpiry = new Date(now.getTime() + OTP_EXPIRY_MINUTES * 60 * 1000);
+    user.otpAttempts = 0;
+
+    await user.save();
+
+    // 7. Send OTP via email
+    try {
+      const transporter = createEmailTransporter();
+
+      await transporter.sendMail({
+        from: `"Gadi Bulao" <${process.env.SMTP_USER}>`,
+        to: normalizedEmail,
+        subject: 'Your OTP for Gadi Bulao Login',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">Gadi Bulao - Email Verification</h2>
+            <p>Your OTP for login is:</p>
+            <h1 style="color: #4CAF50; font-size: 36px; letter-spacing: 5px;">${otp}</h1>
+            <p style="color: #666;">This OTP is valid for ${OTP_EXPIRY_MINUTES} minutes.</p>
+            <p style="color: #999; font-size: 12px;">If you didn't request this OTP, please ignore this email.</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #999; font-size: 12px;">© ${new Date().getFullYear()} Gadi Bulao. All rights reserved.</p>
+          </div>
+        `,
+        text: `Your OTP for Gadi Bulao login is: ${otp}. Valid for ${OTP_EXPIRY_MINUTES} minutes.`
+      });
+
+      console.log(`[OTP] Email sent successfully to ${normalizedEmail}`);
+    } catch (emailError) {
+      console.error('[OTP] Email sending failed:', emailError.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send OTP email. Please try again.',
+        error: emailError.message
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'OTP sent successfully to your email',
+      data: {
+        email: normalizedEmail,
+        expiresIn: OTP_EXPIRY_MINUTES * 60, // seconds
+        isNewUser: user.name === 'Pending'
+      }
     });
-    console.log('[Firebase] Admin SDK initialized successfully');
+
   } catch (error) {
-    console.error('[Firebase] Failed to initialize Admin SDK:', error.message);
-    console.log('[Firebase] Continuing without Firebase token verification...');
+    console.error('[Error] Send OTP:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send OTP',
+      error: error.message
+    });
   }
-}
+};
+
+// ============================================
+// VERIFY OTP - With Full Security
+// ============================================
+/**
+ * Verify OTP and login/register user
+ * Security: Attempt limiting, OTP hash verification, account locking
+ */
+const verifyOtp = async (req, res) => {
+  try {
+    const { email, otp, name, phone, role, vehicle } = req.body;
+
+    // 1. Validate input
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and OTP are required'
+      });
+    }
+
+    if (otp.length !== 6 || !/^\d+$/.test(otp)) {
+      return res.status(400).json({
+        success: false,
+        message: 'OTP must be 6 digits'
+      });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // 2. Find user
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'No OTP request found for this email. Please request OTP first.'
+      });
+    }
+
+    // 3. Check if account is locked
+    if (user.isOtpLocked && user.otpLockUntil) {
+      if (new Date() < user.otpLockUntil) {
+        const remainingMinutes = Math.ceil((user.otpLockUntil - new Date()) / (1000 * 60));
+        return res.status(429).json({
+          success: false,
+          message: `Account locked due to too many failed attempts. Try again in ${remainingMinutes} minutes.`,
+          lockedUntil: user.otpLockUntil
+        });
+      } else {
+        // Lock expired
+        user.isOtpLocked = false;
+        user.otpLockUntil = null;
+        user.otpAttempts = 0;
+      }
+    }
+
+    // 4. Check if OTP exists
+    if (!user.otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'No OTP found. Please request a new OTP.'
+      });
+    }
+
+    // 5. Check if OTP expired
+    if (new Date() > user.otpExpiry) {
+      user.otp = null;
+      user.otpExpiry = null;
+      await user.save();
+      return res.status(400).json({
+        success: false,
+        message: 'OTP has expired. Please request a new OTP.'
+      });
+    }
+
+    // 6. Verify OTP (compare with hash)
+    const isValidOtp = await verifyOTPHash(otp, user.otp);
+
+    if (!isValidOtp) {
+      // Increment failed attempts
+      user.otpAttempts += 1;
+
+      if (user.otpAttempts >= MAX_OTP_ATTEMPTS) {
+        // Lock account
+        user.isOtpLocked = true;
+        user.otpLockUntil = new Date(Date.now() + OTP_LOCK_MINUTES * 60 * 1000);
+        user.otp = null;
+        user.otpExpiry = null;
+        await user.save();
+
+        return res.status(429).json({
+          success: false,
+          message: `Too many failed attempts. Account locked for ${OTP_LOCK_MINUTES} minutes.`,
+          lockedUntil: user.otpLockUntil
+        });
+      }
+
+      await user.save();
+      const remainingAttempts = MAX_OTP_ATTEMPTS - user.otpAttempts;
+      return res.status(400).json({
+        success: false,
+        message: `Invalid OTP. ${remainingAttempts} attempts remaining.`,
+        remainingAttempts
+      });
+    }
+
+    // 7. OTP is valid - Clear OTP data
+    user.otp = null;
+    user.otpExpiry = null;
+    user.otpAttempts = 0;
+    user.otpRequestCount = 0;
+    user.otpRequestWindowStart = null;
+    user.isOtpLocked = false;
+    user.otpLockUntil = null;
+
+    // 8. Check if this is a new user (needs name)
+    const isNewUser = user.name === 'Pending';
+
+    if (isNewUser) {
+      if (!name) {
+        await user.save();
+        return res.status(200).json({
+          success: true,
+          message: 'OTP verified. Please complete registration.',
+          data: {
+            verified: true,
+            requiresRegistration: true,
+            email: normalizedEmail
+          }
+        });
+      }
+
+      // Complete registration
+      user.name = name;
+      if (phone) user.phone = phone;
+
+      if (role === 'rider') {
+        if (!vehicle) {
+          return res.status(400).json({
+            success: false,
+            message: 'Vehicle details required for rider registration'
+          });
+        }
+        user.role = ['rider'];
+        user.activeRole = 'rider';
+        user.riderProfile = {
+          vehicle: {
+            type: vehicle.type || 'cab',
+            model: vehicle.model || 'Unknown',
+            plateNumber: vehicle.plateNumber || 'Unknown',
+            color: vehicle.color || 'Unknown'
+          },
+          rating: 5.0,
+          totalRides: 0,
+          earnings: 0,
+          isOnDuty: false
+        };
+      } else {
+        user.role = ['customer'];
+        user.activeRole = 'customer';
+      }
+    } else {
+      // Existing user - update details if provided
+      if (name) user.name = name;
+      if (phone) user.phone = phone;
+
+      // Handle role switching/adding for existing users
+      if (role === 'rider' && vehicle && !user.role.includes('rider')) {
+        user.role.push('rider');
+        user.activeRole = 'rider';
+        user.riderProfile = {
+          ...user.riderProfile,
+          vehicle: {
+            type: vehicle.type || 'cab',
+            model: vehicle.model || 'Unknown',
+            plateNumber: vehicle.plateNumber || 'Unknown',
+            color: vehicle.color || 'Unknown'
+          }
+        };
+      }
+    }
+
+    // 9. Generate JWT tokens
+    const tokens = generateTokenPair(user._id, user.email, user.activeRole);
+    user.refreshToken = tokens.refreshToken;
+
+    await user.save();
+
+    console.log(`[Auth] ${isNewUser ? 'New user registered' : 'User logged in'}: ${normalizedEmail}`);
+
+    res.status(200).json({
+      success: true,
+      message: isNewUser ? 'Registration successful' : 'Login successful',
+      data: {
+        user: {
+          id: user._id,
+          email: user.email,
+          phone: user.phone,
+          name: user.name,
+          role: user.role,
+          activeRole: user.activeRole,
+          customerProfile: user.customerProfile,
+          riderProfile: user.riderProfile
+        },
+        tokens
+      }
+    });
+
+  } catch (error) {
+    console.error('[Error] Verify OTP:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'OTP verification failed',
+      error: error.message
+    });
+  }
+};
 
 /**
  * Phone-based login/signup
@@ -816,6 +1205,8 @@ const deleteUserById = async (req, res) => {
 };
 
 module.exports = {
+  sendOtp,
+  verifyOtp,
   phoneLogin,
   firebaseSync,
   firebaseRegister,

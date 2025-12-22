@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const {
+  sendOtp,
+  verifyOtp,
   phoneLogin,
   firebaseSync,
   firebaseRegister,
@@ -50,6 +52,22 @@ router.patch('/users/:userId', updateUserById);
  * @access  Public (for admin panel)
  */
 router.delete('/users/:userId', deleteUserById);
+
+/**
+ * @route   POST /api/auth/send-otp
+ * @desc    Send OTP to email for verification
+ * @access  Public
+ * @security Rate limited, OTP hashed
+ */
+router.post('/send-otp', sendOtp);
+
+/**
+ * @route   POST /api/auth/verify-otp
+ * @desc    Verify OTP and login/register user
+ * @access  Public
+ * @security Attempt limiting, account locking
+ */
+router.post('/verify-otp', verifyOtp);
 
 /**
  * @route   POST /api/auth/login

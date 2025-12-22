@@ -62,8 +62,27 @@ const tryRefreshToken = async (): Promise<boolean> => {
 
 export const api = {
   auth: {
-    login: (data: { phone: string; name: string; role?: string; vehicle?: any }) =>
-      fetchApi('/api/auth/login', {
+    // Email OTP Authentication (Secure)
+    sendOtp: (email: string) =>
+      fetchApi('/api/auth/send-otp', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      }),
+
+    verifyOtp: (data: {
+      email: string;
+      otp: string;
+      name?: string;
+      phone?: string;
+      role?: string;
+      vehicle?: {
+        type: string;
+        model: string;
+        plateNumber: string;
+        color?: string;
+      };
+    }) =>
+      fetchApi('/api/auth/verify-otp', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
@@ -86,24 +105,10 @@ export const api = {
 
     getProfile: () => fetchApi('/api/auth/profile'),
 
-    // Firebase authentication endpoints
-    firebaseSync: (data: { phone: string; role: string; firebaseToken: string; firebaseUid: string }) =>
-      fetchApi('/api/auth/firebase-sync', {
+    switchRole: (role: string) =>
+      fetchApi('/api/auth/switch-role', {
         method: 'POST',
-        body: JSON.stringify(data),
-      }),
-
-    firebaseRegister: (data: {
-      phone: string;
-      name: string;
-      role: string;
-      firebaseToken: string;
-      firebaseUid: string;
-      vehicle?: any;
-    }) =>
-      fetchApi('/api/auth/firebase-register', {
-        method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify({ role }),
       }),
   },
 

@@ -37,7 +37,6 @@ module.exports = {
         backgroundColor: "#2E7D32"
       },
       package: "com.gadibulao.app",
-      googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
       permissions: [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -53,9 +52,7 @@ module.exports = {
     plugins: [
       "expo-router",
       "expo-location",
-      "expo-font",
-      "@react-native-firebase/app",
-      "@react-native-firebase/auth"
+      "expo-font"
     ],
     scheme: "gadibulao",
     experiments: {

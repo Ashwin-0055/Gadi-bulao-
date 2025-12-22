@@ -1,8 +1,15 @@
 /**
- * Phone Login Screen with Firebase OTP Authentication
+ * Email Login Screen with Secure OTP Authentication
+ *
+ * Security Features:
+ * - OTP hashed on server
+ * - 5-minute OTP expiry
+ * - 5 attempt limit (locks for 30 min)
+ * - Rate limiting (3 requests per 10 min)
+ * - Email validation
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -13,35 +20,29 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
-  ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
-import { PhoneInput } from '../../src/components/shared/PhoneInput';
 import { CustomButton } from '../../src/components/shared/CustomButton';
 import { Colors } from '../../src/constants/colors';
 import { api } from '../../src/services/apiClient';
 import { useUserStore } from '../../src/store/userStore';
-import { formatPhoneForFirebase } from '../../src/config/firebase';
 
-type Step = 'phone' | 'otp' | 'name' | 'vehicle';
+type Step = 'email' | 'otp' | 'name' | 'phone' | 'vehicle';
 
-export default function PhoneLoginScreen() {
+export default function EmailLoginScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ role?: string }>();
   const role = (params.role || 'customer') as 'customer' | 'rider';
 
   // State
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
-  const [step, setStep] = useState<Step>('phone');
+  const [phone, setPhone] = useState('');
+  const [step, setStep] = useState<Step>('email');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isNewUser, setIsNewUser] = useState(false);
-
-  // Firebase confirmation result
-  const [confirm, setConfirm] = useState<FirebaseAuthTypes.ConfirmationResult | null>(null);
 
   // Vehicle details for riders
   const [vehicleType, setVehicleType] = useState<'bike' | 'auto' | 'cab'>('cab');
@@ -51,22 +52,21 @@ export default function PhoneLoginScreen() {
 
   const login = useUserStore((state) => state.login);
 
-  // Handle auth state changes
-  useEffect(() => {
-    const unsubscribe = auth().onAuthStateChanged(async (user) => {
-      if (user && step === 'otp') {
-        // User signed in via Firebase, now sync with backend
-        await syncWithBackend(user);
-      }
-    });
+  // Validate email format
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
-    return unsubscribe;
-  }, [step]);
-
-  // Send OTP via Firebase
+  // Send OTP to email
   const handleSendOTP = async () => {
-    if (phone.length < 10) {
-      setError('Please enter a valid 10-digit phone number');
+    if (!email.trim()) {
+      setError('Please enter your email address');
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address');
       return;
     }
 
@@ -74,34 +74,20 @@ export default function PhoneLoginScreen() {
     setError('');
 
     try {
-      const formattedPhone = formatPhoneForFirebase(phone);
-      console.log('Sending OTP to:', formattedPhone);
+      const response = await api.auth.sendOtp(email.toLowerCase().trim());
 
-      const confirmation = await auth().signInWithPhoneNumber(formattedPhone);
-      setConfirm(confirmation);
-      setStep('otp');
-      Alert.alert('OTP Sent', `Verification code sent to ${formattedPhone}`);
+      if (response.data?.success) {
+        setIsNewUser(response.data.data?.isNewUser || false);
+        setStep('otp');
+        Alert.alert('OTP Sent', `Verification code sent to ${email}`);
+      } else {
+        throw new Error(response.data?.message || 'Failed to send OTP');
+      }
     } catch (err: any) {
       console.error('Send OTP error:', err);
-      console.error('Error code:', err.code);
-      console.error('Error message:', err.message);
-
-      let errorMessage = err.message || 'Failed to send OTP. Please try again.';
-
-      if (err.code === 'auth/invalid-phone-number') {
-        errorMessage = 'Invalid phone number format.';
-      } else if (err.code === 'auth/too-many-requests') {
-        errorMessage = 'Too many requests. Please try again later.';
-      } else if (err.code === 'auth/quota-exceeded') {
-        errorMessage = 'SMS quota exceeded. Please try again later.';
-      } else if (err.code === 'auth/app-not-authorized') {
-        errorMessage = 'App not authorized. Check SHA-1 fingerprint in Firebase.';
-      } else if (err.code === 'auth/missing-client-identifier') {
-        errorMessage = 'Missing client identifier. Check Firebase setup.';
-      }
-
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to send OTP';
       setError(errorMessage);
-      Alert.alert('Error', `${err.code || 'Unknown'}: ${errorMessage}`);
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -114,74 +100,50 @@ export default function PhoneLoginScreen() {
       return;
     }
 
-    if (!confirm) {
-      setError('Please request OTP first');
-      return;
-    }
-
     setLoading(true);
     setError('');
 
     try {
-      const credential = await confirm.confirm(otp);
-
-      if (credential.user) {
-        // Firebase verification successful
-        // The onAuthStateChanged will handle syncing with backend
-        console.log('Firebase auth successful:', credential.user.phoneNumber);
-      }
-    } catch (err: any) {
-      console.error('Verify OTP error:', err);
-      let errorMessage = 'Invalid OTP. Please try again.';
-
-      if (err.code === 'auth/invalid-verification-code') {
-        errorMessage = 'Invalid verification code.';
-      } else if (err.code === 'auth/code-expired') {
-        errorMessage = 'OTP expired. Please request a new one.';
-      }
-
-      setError(errorMessage);
-      Alert.alert('Error', errorMessage);
-      setLoading(false);
-    }
-  };
-
-  // Sync Firebase user with backend
-  const syncWithBackend = async (firebaseUser: FirebaseAuthTypes.User) => {
-    setLoading(true);
-    try {
-      const idToken = await firebaseUser.getIdToken();
-      const cleanPhone = phone.replace(/\D/g, '').slice(-10);
-
-      const response = await api.auth.firebaseSync({
-        phone: cleanPhone,
-        role,
-        firebaseToken: idToken,
-        firebaseUid: firebaseUser.uid,
+      // For existing users, verify and login directly
+      // For new users, just verify OTP first
+      const response = await api.auth.verifyOtp({
+        email: email.toLowerCase().trim(),
+        otp,
       });
 
       if (response.data?.success) {
-        const { tokens, user } = response.data.data;
-        await login(tokens, user);
+        if (response.data.data?.requiresRegistration) {
+          // New user - needs to provide name
+          setIsNewUser(true);
+          setStep('name');
+        } else if (response.data.data?.tokens) {
+          // Existing user - login successful
+          const { tokens, user } = response.data.data;
+          await login(tokens, user);
 
-        setTimeout(() => {
-          if (user.activeRole === 'customer') {
-            router.replace('/customer/home');
-          } else {
-            router.replace('/rider/home');
-          }
-        }, 100);
+          setTimeout(() => {
+            if (user.activeRole === 'customer') {
+              router.replace('/customer/home');
+            } else {
+              router.replace('/rider/home');
+            }
+          }, 100);
+        }
       } else {
-        // User exists in Firebase but not in our backend - need to register
-        setIsNewUser(true);
-        setStep('name');
-        setLoading(false);
+        throw new Error(response.data?.message || 'Invalid OTP');
       }
     } catch (err: any) {
-      console.error('Sync error:', err);
-      // If sync fails, treat as new user
-      setIsNewUser(true);
-      setStep('name');
+      console.error('Verify OTP error:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Invalid OTP';
+      setError(errorMessage);
+
+      // Show remaining attempts if available
+      if (err.response?.data?.remainingAttempts !== undefined) {
+        Alert.alert('Error', `${errorMessage}`);
+      } else {
+        Alert.alert('Error', errorMessage);
+      }
+    } finally {
       setLoading(false);
     }
   };
@@ -190,6 +152,15 @@ export default function PhoneLoginScreen() {
   const handleNameSubmit = () => {
     if (!name.trim()) {
       Alert.alert('Error', 'Please enter your name');
+      return;
+    }
+    setStep('phone');
+  };
+
+  // Handle phone submission
+  const handlePhoneSubmit = () => {
+    if (phone && phone.length !== 10) {
+      Alert.alert('Error', 'Please enter a valid 10-digit phone number');
       return;
     }
 
@@ -223,20 +194,12 @@ export default function PhoneLoginScreen() {
     setError('');
 
     try {
-      const currentUser = auth().currentUser;
-      if (!currentUser) {
-        throw new Error('No authenticated user');
-      }
-
-      const idToken = await currentUser.getIdToken();
-      const cleanPhone = phone.replace(/\D/g, '').slice(-10);
-
       const registerPayload: any = {
-        phone: cleanPhone,
+        email: email.toLowerCase().trim(),
+        otp, // Re-send OTP for verification during registration
         name: name.trim(),
+        phone: phone || undefined,
         role,
-        firebaseToken: idToken,
-        firebaseUid: currentUser.uid,
       };
 
       if (role === 'rider') {
@@ -248,7 +211,7 @@ export default function PhoneLoginScreen() {
         };
       }
 
-      const response = await api.auth.firebaseRegister(registerPayload);
+      const response = await api.auth.verifyOtp(registerPayload);
 
       if (response.data?.success) {
         const { tokens, user } = response.data.data;
@@ -276,12 +239,14 @@ export default function PhoneLoginScreen() {
 
   const getTitle = () => {
     switch (step) {
-      case 'phone':
-        return 'Enter your phone number';
+      case 'email':
+        return 'Enter your email';
       case 'otp':
         return 'Enter verification code';
       case 'name':
         return "What's your name?";
+      case 'phone':
+        return 'Phone number (optional)';
       case 'vehicle':
         return 'Vehicle Details';
       default:
@@ -291,12 +256,14 @@ export default function PhoneLoginScreen() {
 
   const getSubtitle = () => {
     switch (step) {
-      case 'phone':
-        return "We'll send you a verification code via SMS";
+      case 'email':
+        return "We'll send you a verification code";
       case 'otp':
-        return `Enter the 6-digit code sent to +91 ${phone}`;
+        return `Enter the 6-digit code sent to ${email}`;
       case 'name':
         return 'This will be shown to your ' + (role === 'customer' ? 'driver' : 'customers');
+      case 'phone':
+        return 'For ride communication (can skip)';
       case 'vehicle':
         return 'Enter your vehicle information';
       default:
@@ -306,13 +273,14 @@ export default function PhoneLoginScreen() {
 
   const handleBack = () => {
     if (step === 'vehicle') {
+      setStep('phone');
+    } else if (step === 'phone') {
       setStep('name');
     } else if (step === 'name') {
       setStep('otp');
     } else if (step === 'otp') {
-      setStep('phone');
+      setStep('email');
       setOtp('');
-      setConfirm(null);
     } else {
       router.back();
     }
@@ -320,11 +288,13 @@ export default function PhoneLoginScreen() {
 
   const getButtonTitle = () => {
     switch (step) {
-      case 'phone':
+      case 'email':
         return 'Send OTP';
       case 'otp':
         return 'Verify OTP';
       case 'name':
+        return 'Continue';
+      case 'phone':
         return role === 'rider' ? 'Continue' : 'Complete';
       case 'vehicle':
         return 'Register';
@@ -335,12 +305,14 @@ export default function PhoneLoginScreen() {
 
   const getButtonAction = () => {
     switch (step) {
-      case 'phone':
+      case 'email':
         return handleSendOTP;
       case 'otp':
         return handleVerifyOTP;
       case 'name':
         return handleNameSubmit;
+      case 'phone':
+        return handlePhoneSubmit;
       case 'vehicle':
         return completeRegistration;
       default:
@@ -350,12 +322,14 @@ export default function PhoneLoginScreen() {
 
   const isButtonDisabled = () => {
     switch (step) {
-      case 'phone':
-        return phone.length < 10;
+      case 'email':
+        return !email.trim() || !isValidEmail(email);
       case 'otp':
         return otp.length !== 6;
       case 'name':
         return !name.trim();
+      case 'phone':
+        return false; // Phone is optional
       case 'vehicle':
         return !vehicleNumber.trim() || !vehicleModel.trim();
       default:
@@ -382,13 +356,24 @@ export default function PhoneLoginScreen() {
 
           {/* Input */}
           <View style={styles.inputSection}>
-            {step === 'phone' && (
-              <PhoneInput
-                value={phone}
-                onChangeText={setPhone}
-                error={error}
-                autoFocus
-              />
+            {step === 'email' && (
+              <View style={styles.emailContainer}>
+                <View style={styles.inputField}>
+                  <Text style={styles.emoji}>📧</Text>
+                  <TextInput
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="Enter your email"
+                    placeholderTextColor={Colors.textMuted}
+                    style={styles.textInput}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoFocus
+                  />
+                </View>
+                {error ? <Text style={styles.errorText}>{error}</Text> : null}
+              </View>
             )}
 
             {step === 'otp' && (
@@ -418,10 +403,10 @@ export default function PhoneLoginScreen() {
 
             {step === 'name' && (
               <View style={styles.nameInputContainer}>
-                <Text style={styles.phoneDisplay}>+91 {phone}</Text>
-                <View style={styles.nameInput}>
+                <Text style={styles.emailDisplay}>{email}</Text>
+                <View style={styles.inputWrapper}>
                   <Text style={styles.inputLabel}>Name</Text>
-                  <View style={styles.nameInputField}>
+                  <View style={styles.inputField}>
                     <Text style={styles.emoji}>👤</Text>
                     <TextInput
                       value={name}
@@ -433,6 +418,39 @@ export default function PhoneLoginScreen() {
                     />
                   </View>
                 </View>
+              </View>
+            )}
+
+            {step === 'phone' && (
+              <View style={styles.phoneInputContainer}>
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.inputLabel}>Phone Number</Text>
+                  <View style={styles.inputField}>
+                    <Text style={styles.countryCode}>+91</Text>
+                    <TextInput
+                      value={phone}
+                      onChangeText={(text) => setPhone(text.replace(/\D/g, '').slice(0, 10))}
+                      placeholder="Enter phone number"
+                      placeholderTextColor={Colors.textMuted}
+                      style={styles.textInput}
+                      keyboardType="phone-pad"
+                      maxLength={10}
+                      autoFocus
+                    />
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (role === 'rider') {
+                      setStep('vehicle');
+                    } else {
+                      completeRegistration();
+                    }
+                  }}
+                  style={styles.skipButton}
+                >
+                  <Text style={styles.skipText}>Skip for now</Text>
+                </TouchableOpacity>
               </View>
             )}
 
@@ -470,7 +488,7 @@ export default function PhoneLoginScreen() {
                 {/* Vehicle Number */}
                 <View style={styles.vehicleInput}>
                   <Text style={styles.inputLabel}>Vehicle Number *</Text>
-                  <View style={styles.nameInputField}>
+                  <View style={styles.inputField}>
                     <Text style={styles.emoji}>🔢</Text>
                     <TextInput
                       value={vehicleNumber}
@@ -487,7 +505,7 @@ export default function PhoneLoginScreen() {
                 {/* Vehicle Model */}
                 <View style={styles.vehicleInput}>
                   <Text style={styles.inputLabel}>Vehicle Model *</Text>
-                  <View style={styles.nameInputField}>
+                  <View style={styles.inputField}>
                     <Text style={styles.emoji}>🚘</Text>
                     <TextInput
                       value={vehicleModel}
@@ -502,7 +520,7 @@ export default function PhoneLoginScreen() {
                 {/* Vehicle Color */}
                 <View style={styles.vehicleInput}>
                   <Text style={styles.inputLabel}>Vehicle Color (Optional)</Text>
-                  <View style={styles.nameInputField}>
+                  <View style={styles.inputField}>
                     <Text style={styles.emoji}>🎨</Text>
                     <TextInput
                       value={vehicleColor}
@@ -542,16 +560,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  loadingContainer: {
+  scrollView: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: Colors.textSecondary,
+  scrollContent: {
+    flexGrow: 1,
   },
   content: {
     flex: 1,
@@ -584,6 +597,39 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
+  emailContainer: {
+    gap: 12,
+  },
+  inputField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.gray100,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.gray200,
+    paddingHorizontal: 16,
+    height: 56,
+    gap: 12,
+  },
+  emoji: {
+    fontSize: 20,
+  },
+  countryCode: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 16,
+    color: Colors.textPrimary,
+    paddingVertical: 0,
+  },
+  errorText: {
+    color: Colors.error || '#DC2626',
+    fontSize: 14,
+    textAlign: 'center',
+  },
   otpContainer: {
     alignItems: 'center',
     gap: 16,
@@ -605,11 +651,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 20,
   },
-  errorText: {
-    color: Colors.error || '#DC2626',
-    fontSize: 14,
-    textAlign: 'center',
-  },
   resendButton: {
     marginTop: 8,
   },
@@ -621,12 +662,12 @@ const styles = StyleSheet.create({
   nameInputContainer: {
     gap: 20,
   },
-  phoneDisplay: {
+  emailDisplay: {
     fontSize: 14,
     color: Colors.textSecondary,
     marginBottom: 8,
   },
-  nameInput: {
+  inputWrapper: {
     gap: 8,
   },
   inputLabel: {
@@ -635,41 +676,17 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginLeft: 4,
   },
-  nameInputField: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.gray100,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: Colors.gray200,
-    paddingHorizontal: 16,
-    height: 56,
-    gap: 12,
-  },
-  emoji: {
-    fontSize: 20,
-  },
-  textInput: {
-    flex: 1,
-    fontSize: 16,
-    color: Colors.textPrimary,
-    paddingVertical: 0,
-  },
-  footer: {
+  phoneInputContainer: {
     gap: 16,
-    marginBottom: 20,
   },
-  disclaimer: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 18,
+  skipButton: {
+    alignSelf: 'center',
+    padding: 8,
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
+  skipText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
   },
   vehicleContainer: {
     gap: 16,
@@ -706,5 +723,15 @@ const styles = StyleSheet.create({
   },
   vehicleTypeTextActive: {
     color: Colors.primary,
+  },
+  footer: {
+    gap: 16,
+    marginBottom: 20,
+  },
+  disclaimer: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });

@@ -23,7 +23,7 @@ export default function RoleSelectionScreen() {
   const handleRoleSelect = (role: 'customer' | 'rider') => {
     // Navigate to login with selected role
     router.push({
-      pathname: '/auth/phone-login',
+      pathname: '/auth/email-login',
       params: { role },
     });
   };

@@ -26,6 +26,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.0.3",
     "ngeohash": "^0.6.3",
+    "nodemailer": "^7.0.12",
     "socket.io": "^4.6.1"
   },
   "devDependencies": {

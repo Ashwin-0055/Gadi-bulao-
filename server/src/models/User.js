@@ -1,10 +1,16 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  phone: {
+  email: {
     type: String,
     required: true,
     unique: true,
+    trim: true,
+    lowercase: true,
+    match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  },
+  phone: {
+    type: String,
     trim: true,
     match: /^[0-9]{10,15}$/
   },
@@ -12,6 +18,35 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     trim: true
+  },
+  // OTP fields for email verification (with security)
+  otp: {
+    type: String,
+    default: null
+  },
+  otpExpiry: {
+    type: Date,
+    default: null
+  },
+  otpAttempts: {
+    type: Number,
+    default: 0
+  },
+  otpRequestCount: {
+    type: Number,
+    default: 0
+  },
+  otpRequestWindowStart: {
+    type: Date,
+    default: null
+  },
+  isOtpLocked: {
+    type: Boolean,
+    default: false
+  },
+  otpLockUntil: {
+    type: Date,
+    default: null
   },
   role: [{
     type: String,
@@ -111,6 +146,7 @@ const userSchema = new mongoose.Schema({
 userSchema.index({ 'riderProfile.location': '2dsphere' });
 
 // Index for faster queries
+userSchema.index({ email: 1 });
 userSchema.index({ phone: 1 });
 userSchema.index({ 'riderProfile.isOnDuty': 1 });
 userSchema.index({ 'riderProfile.currentZone': 1 });
