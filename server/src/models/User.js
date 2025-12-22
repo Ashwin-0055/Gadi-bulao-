@@ -147,7 +147,7 @@ userSchema.index({ 'riderProfile.location': '2dsphere' });
 
 // Index for faster queries
 userSchema.index({ email: 1 });
-userSchema.index({ phone: 1 });
+userSchema.index({ phone: 1 }, { sparse: true }); // sparse allows multiple null values
 userSchema.index({ 'riderProfile.isOnDuty': 1 });
 userSchema.index({ 'riderProfile.currentZone': 1 });
 
