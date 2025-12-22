@@ -1,32 +1,41 @@
 const User = require('../models/User');
 const { generateTokenPair, verifyRefreshToken } = require('../utils/jwt');
 const bcrypt = require('bcryptjs');
-const nodemailer = require('nodemailer');
+const axios = require('axios');
 
 // ============================================
-// EMAIL OTP CONFIGURATION
+// EMAIL OTP CONFIGURATION (Using Brevo API)
 // ============================================
 
-// Create email transporter
-const createEmailTransporter = () => {
-  const config = {
-    host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
-    port: parseInt(process.env.SMTP_PORT) || 587,
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-    tls: {
-      rejectUnauthorized: false
-    },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-  };
+// Send email using Brevo HTTP API (works on Render free tier)
+const sendEmailViaBrevo = async (to, subject, htmlContent, textContent) => {
+  const apiKey = process.env.BREVO_API_KEY;
+  const senderEmail = process.env.SENDER_EMAIL || 'noreply@gadibulao.com';
+  const senderName = process.env.SENDER_NAME || 'Gadi Bulao';
 
-  console.log('[SMTP] Configuring with host:', config.host, 'port:', config.port);
-  return nodemailer.createTransport(config);
+  if (!apiKey) {
+    throw new Error('BREVO_API_KEY not configured');
+  }
+
+  const response = await axios.post(
+    'https://api.brevo.com/v3/smtp/email',
+    {
+      sender: { name: senderName, email: senderEmail },
+      to: [{ email: to }],
+      subject: subject,
+      htmlContent: htmlContent,
+      textContent: textContent,
+    },
+    {
+      headers: {
+        'accept': 'application/json',
+        'api-key': apiKey,
+        'content-type': 'application/json',
+      },
+    }
+  );
+
+  return response.data;
 };
 
 // Generate 6-digit OTP
@@ -153,35 +162,36 @@ const sendOtp = async (req, res) => {
 
     await user.save();
 
-    // 7. Send OTP via email
+    // 7. Send OTP via Brevo API
     try {
-      const transporter = createEmailTransporter();
+      const htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #2E7D32;">Gadi Bulao - Email Verification</h2>
+          <p>Your OTP for login is:</p>
+          <h1 style="color: #4CAF50; font-size: 36px; letter-spacing: 5px; background: #f5f5f5; padding: 20px; border-radius: 10px; text-align: center;">${otp}</h1>
+          <p style="color: #666;">This OTP is valid for <strong>${OTP_EXPIRY_MINUTES} minutes</strong>.</p>
+          <p style="color: #999; font-size: 12px;">If you didn't request this OTP, please ignore this email.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+          <p style="color: #999; font-size: 12px;">© ${new Date().getFullYear()} Gadi Bulao. All rights reserved.</p>
+        </div>
+      `;
+      const textContent = `Your OTP for Gadi Bulao login is: ${otp}. Valid for ${OTP_EXPIRY_MINUTES} minutes.`;
 
-      await transporter.sendMail({
-        from: `"Gadi Bulao" <${process.env.SMTP_USER}>`,
-        to: normalizedEmail,
-        subject: 'Your OTP for Gadi Bulao Login',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #333;">Gadi Bulao - Email Verification</h2>
-            <p>Your OTP for login is:</p>
-            <h1 style="color: #4CAF50; font-size: 36px; letter-spacing: 5px;">${otp}</h1>
-            <p style="color: #666;">This OTP is valid for ${OTP_EXPIRY_MINUTES} minutes.</p>
-            <p style="color: #999; font-size: 12px;">If you didn't request this OTP, please ignore this email.</p>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-            <p style="color: #999; font-size: 12px;">© ${new Date().getFullYear()} Gadi Bulao. All rights reserved.</p>
-          </div>
-        `,
-        text: `Your OTP for Gadi Bulao login is: ${otp}. Valid for ${OTP_EXPIRY_MINUTES} minutes.`
-      });
+      await sendEmailViaBrevo(
+        normalizedEmail,
+        'Your OTP for Gadi Bulao Login',
+        htmlContent,
+        textContent
+      );
 
       console.log(`[OTP] Email sent successfully to ${normalizedEmail}`);
     } catch (emailError) {
       console.error('[OTP] Email sending failed:', emailError.message);
+      console.error('[OTP] Full error:', emailError.response?.data || emailError);
       return res.status(500).json({
         success: false,
         message: 'Failed to send OTP email. Please try again.',
-        error: emailError.message
+        error: emailError.response?.data?.message || emailError.message
       });
     }
 
