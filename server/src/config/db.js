@@ -14,6 +14,22 @@ const connectDB = async () => {
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
 
+    // Fix: Drop old unique phone index if it exists (migration)
+    try {
+      const collection = conn.connection.collection('users');
+      const indexes = await collection.indexes();
+      const phoneIndex = indexes.find(idx => idx.key && idx.key.phone && idx.unique);
+      if (phoneIndex) {
+        await collection.dropIndex(phoneIndex.name);
+        console.log('✅ Dropped old unique phone index');
+      }
+    } catch (indexErr) {
+      // Index might not exist, that's fine
+      if (!indexErr.message.includes('index not found')) {
+        console.log('Index migration note:', indexErr.message);
+      }
+    }
+
     // Handle connection events
     mongoose.connection.on('error', (err) => {
       console.error('❌ MongoDB connection error:', err);
