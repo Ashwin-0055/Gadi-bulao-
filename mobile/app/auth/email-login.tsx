@@ -196,7 +196,7 @@ export default function EmailLoginScreen() {
     try {
       const registerPayload: any = {
         email: email.toLowerCase().trim(),
-        otp, // Re-send OTP for verification during registration
+        otp: '000000', // Dummy OTP - backend uses isEmailVerified flag instead
         name: name.trim(),
         phone: phone || undefined,
         role,

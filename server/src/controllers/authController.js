@@ -270,57 +270,76 @@ const verifyOtp = async (req, res) => {
       }
     }
 
-    // 4. Check if OTP exists
-    if (!user.otp) {
-      return res.status(400).json({
-        success: false,
-        message: 'No OTP found. Please request a new OTP.'
-      });
-    }
+    // 4. Check if user is in registration process (email already verified, completing profile)
+    const isCompletingRegistration = user.isEmailVerified && user.name === 'Pending' && name;
 
-    // 5. Check if OTP expired
-    if (new Date() > user.otpExpiry) {
-      user.otp = null;
-      user.otpExpiry = null;
-      await user.save();
-      return res.status(400).json({
-        success: false,
-        message: 'OTP has expired. Please request a new OTP.'
-      });
-    }
-
-    // 6. Verify OTP (compare with hash)
-    const isValidOtp = await verifyOTPHash(otp, user.otp);
-
-    if (!isValidOtp) {
-      // Increment failed attempts
-      user.otpAttempts += 1;
-
-      if (user.otpAttempts >= MAX_OTP_ATTEMPTS) {
-        // Lock account
-        user.isOtpLocked = true;
-        user.otpLockUntil = new Date(Date.now() + OTP_LOCK_MINUTES * 60 * 1000);
-        user.otp = null;
-        user.otpExpiry = null;
+    // 5. Check verification expiry (10 minutes for registration completion)
+    if (isCompletingRegistration) {
+      const verificationAge = new Date() - new Date(user.emailVerifiedAt);
+      const maxAge = 10 * 60 * 1000; // 10 minutes
+      if (verificationAge > maxAge) {
+        user.isEmailVerified = false;
+        user.emailVerifiedAt = null;
         await user.save();
-
-        return res.status(429).json({
+        return res.status(400).json({
           success: false,
-          message: `Too many failed attempts. Account locked for ${OTP_LOCK_MINUTES} minutes.`,
-          lockedUntil: user.otpLockUntil
+          message: 'Verification expired. Please request a new OTP.'
+        });
+      }
+      // Skip OTP validation for registration completion
+    } else {
+      // Normal OTP verification flow
+      if (!user.otp) {
+        return res.status(400).json({
+          success: false,
+          message: 'No OTP found. Please request a new OTP.'
         });
       }
 
-      await user.save();
-      const remainingAttempts = MAX_OTP_ATTEMPTS - user.otpAttempts;
-      return res.status(400).json({
-        success: false,
-        message: `Invalid OTP. ${remainingAttempts} attempts remaining.`,
-        remainingAttempts
-      });
+      // Check if OTP expired
+      if (new Date() > user.otpExpiry) {
+        user.otp = null;
+        user.otpExpiry = null;
+        await user.save();
+        return res.status(400).json({
+          success: false,
+          message: 'OTP has expired. Please request a new OTP.'
+        });
+      }
+
+      // Verify OTP (compare with hash)
+      const isValidOtp = await verifyOTPHash(otp, user.otp);
+
+      if (!isValidOtp) {
+        // Increment failed attempts
+        user.otpAttempts += 1;
+
+        if (user.otpAttempts >= MAX_OTP_ATTEMPTS) {
+          // Lock account
+          user.isOtpLocked = true;
+          user.otpLockUntil = new Date(Date.now() + OTP_LOCK_MINUTES * 60 * 1000);
+          user.otp = null;
+          user.otpExpiry = null;
+          await user.save();
+
+          return res.status(429).json({
+            success: false,
+            message: `Too many failed attempts. Account locked for ${OTP_LOCK_MINUTES} minutes.`,
+            lockedUntil: user.otpLockUntil
+          });
+        }
+
+        await user.save();
+        const remainingAttempts = MAX_OTP_ATTEMPTS - user.otpAttempts;
+        return res.status(400).json({
+          success: false,
+          message: `Invalid OTP. ${remainingAttempts} attempts remaining.`,
+          remainingAttempts
+        });
+      }
     }
 
-    // 7. OTP is valid - Clear OTP data
+    // 7. OTP is valid - Mark email as verified
     user.otp = null;
     user.otpExpiry = null;
     user.otpAttempts = 0;
@@ -328,6 +347,8 @@ const verifyOtp = async (req, res) => {
     user.otpRequestWindowStart = null;
     user.isOtpLocked = false;
     user.otpLockUntil = null;
+    user.isEmailVerified = true;
+    user.emailVerifiedAt = new Date();
 
     // 8. Check if this is a new user (needs name)
     const isNewUser = user.name === 'Pending';

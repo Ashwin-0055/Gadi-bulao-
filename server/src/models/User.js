@@ -48,6 +48,14 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  isEmailVerified: {
+    type: Boolean,
+    default: false
+  },
+  emailVerifiedAt: {
+    type: Date,
+    default: null
+  },
   role: [{
     type: String,
     enum: ['customer', 'rider'],
