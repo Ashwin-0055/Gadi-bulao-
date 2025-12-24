@@ -166,7 +166,7 @@ const RideRequestItem: React.FC<RideRequestItemProps> = ({
     >
       {/* Gradient Header with Timer */}
       <LinearGradient
-        colors={isUrgent ? ['#FF5252', '#FF1744'] : ['#667eea', '#764ba2']}
+        colors={isUrgent ? ['#FF4757', '#CC2936'] : ['#00D9FF', '#0099CC']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.headerGradient}
@@ -199,7 +199,7 @@ const RideRequestItem: React.FC<RideRequestItemProps> = ({
         <View style={styles.mainInfo}>
           <View style={styles.customerSection}>
             <View style={styles.vehicleIconContainer}>
-              <Ionicons name={getVehicleIcon(request.vehicleType || 'CAB')} size={28} color="#667eea" />
+              <Ionicons name={getVehicleIcon(request.vehicleType || 'CAB')} size={28} color="#00D9FF" />
             </View>
             <View style={styles.customerDetails}>
               <Text style={styles.customerName}>{customerName}</Text>
@@ -267,12 +267,12 @@ const RideRequestItem: React.FC<RideRequestItemProps> = ({
           onPress={() => onAccept(requestId)}
         >
           <LinearGradient
-            colors={['#4CAF50', '#2E7D32']}
+            colors={['#00D9FF', '#0099CC']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.acceptButtonGradient}
           >
-            <Ionicons name="checkmark-circle" size={22} color="#fff" />
+            <Ionicons name="checkmark-circle" size={22} color="#000" />
             <Text style={styles.acceptButtonText}>Accept Ride</Text>
           </LinearGradient>
         </Button>
@@ -283,21 +283,23 @@ const RideRequestItem: React.FC<RideRequestItemProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: '#111111',
     borderRadius: 20,
     marginHorizontal: 16,
     marginVertical: 8,
-    shadowColor: '#667eea',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 10,
+    borderWidth: 1,
+    borderColor: '#1a1a1a',
+    shadowColor: '#00D9FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
     overflow: 'hidden',
   },
   urgentContainer: {
-    shadowColor: '#FF5252',
+    shadowColor: '#FF4757',
     borderWidth: 2,
-    borderColor: '#FF5252',
+    borderColor: '#FF4757',
   },
   headerGradient: {
     paddingHorizontal: 16,
@@ -364,7 +366,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 14,
-    backgroundColor: '#f0f3ff',
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -375,7 +377,7 @@ const styles = StyleSheet.create({
   customerName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1a1a2e',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   ratingRow: {
@@ -385,13 +387,13 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: 14,
-    color: '#666',
+    color: '#888',
     fontWeight: '500',
   },
   distanceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f3ff',
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
@@ -400,7 +402,7 @@ const styles = StyleSheet.create({
   },
   distanceText: {
     fontSize: 12,
-    color: '#667eea',
+    color: '#00D9FF',
     fontWeight: '600',
   },
   fareSection: {
@@ -408,18 +410,20 @@ const styles = StyleSheet.create({
   },
   fareLabel: {
     fontSize: 12,
-    color: '#999',
+    color: '#666',
     marginBottom: 2,
   },
   fareAmount: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#4CAF50',
+    color: '#00D9FF',
   },
   locationDetails: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#0a0a0a',
     borderRadius: 14,
     padding: 14,
+    borderWidth: 1,
+    borderColor: '#1a1a1a',
   },
   locationRow: {
     flexDirection: 'row',
@@ -437,12 +441,12 @@ const styles = StyleSheet.create({
     borderWidth: 3,
   },
   pickupDot: {
-    backgroundColor: '#fff',
-    borderColor: '#4CAF50',
+    backgroundColor: '#0a0a0a',
+    borderColor: '#00D9FF',
   },
   dropoffDot: {
-    backgroundColor: '#fff',
-    borderColor: '#F44336',
+    backgroundColor: '#0a0a0a',
+    borderColor: '#FF4757',
   },
   locationTextContainer: {
     flex: 1,
@@ -451,13 +455,13 @@ const styles = StyleSheet.create({
   locationLabel: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#999',
+    color: '#666',
     letterSpacing: 0.5,
     marginBottom: 2,
   },
   locationText: {
     fontSize: 14,
-    color: '#333',
+    color: '#FFFFFF',
     fontWeight: '500',
     lineHeight: 20,
   },
@@ -470,7 +474,7 @@ const styles = StyleSheet.create({
   routeLineDashed: {
     width: 2,
     height: '100%',
-    backgroundColor: '#ddd',
+    backgroundColor: '#333',
     borderStyle: 'dashed' as any,
   },
   actions: {
@@ -486,12 +490,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: 14,
-    backgroundColor: '#FFEBEE',
+    backgroundColor: 'rgba(255, 71, 87, 0.1)',
+    borderWidth: 1,
+    borderColor: '#FF4757',
     gap: 6,
     cursor: 'pointer' as any,
   },
   rejectButtonText: {
-    color: '#F44336',
+    color: '#FF4757',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -509,7 +515,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   acceptButtonText: {
-    color: '#fff',
+    color: '#000',
     fontSize: 16,
     fontWeight: '700',
   },

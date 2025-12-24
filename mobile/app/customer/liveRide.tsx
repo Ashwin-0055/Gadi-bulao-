@@ -79,7 +79,6 @@ export default function CustomerLiveRide() {
 
     // Listen for ride status updates
     socketService.onRideStatusUpdate((data: any) => {
-      console.log('📡 Ride status update received:', data);
 
       // Update local state - handle both full data and status-only updates
       if (data.status) {
@@ -109,7 +108,6 @@ export default function CustomerLiveRide() {
 
     // Listen for driver location updates
     socketService.onDriverLocationUpdate((data: any) => {
-      console.log('📍 Driver location update:', data);
       // Handle both { location: {...} } and direct location object
       const location = data.location || data;
       if (location && location.latitude && location.longitude) {
@@ -219,11 +217,11 @@ export default function CustomerLiveRide() {
       case 'ACCEPTED':
         return '#FF9800';
       case 'ARRIVED':
-        return '#4CAF50';
+        return '#00D9FF';
       case 'STARTED':
-        return '#2196F3';
+        return '#00D9FF';
       default:
-        return '#9E9E9E';
+        return '#666';
     }
   };
 
@@ -243,19 +241,12 @@ export default function CustomerLiveRide() {
           style: 'destructive',
           onPress: () => {
             try {
-              console.log('🚫 Cancelling ride:', rideData?._id);
               if (socketService && rideData?._id) {
-                // Listen for cancellation confirmation
-                socketService.onRideCancelledConfirm((data) => {
-                  console.log('✅ Ride cancelled confirmed:', data);
-                });
-
                 socketService.cancelRide({ rideId: rideData._id, reason: 'Customer cancelled' });
               }
               clearActiveRide();
               router.replace('/customer/home');
             } catch (error) {
-              console.error('❌ Cancel ride error:', error);
               Alert.alert('Error', 'Failed to cancel ride');
             }
           },
@@ -319,7 +310,7 @@ export default function CustomerLiveRide() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
 
       {/* Map */}
       <LiveRideMap
@@ -360,20 +351,20 @@ export default function CustomerLiveRide() {
             </View>
           </View>
           <Button style={styles.callButton} onPress={handleCallDriver}>
-            <Ionicons name="call" size={20} color="#4CAF50" />
+            <Ionicons name="call" size={20} color="#00D9FF" />
           </Button>
         </View>
 
         <View style={styles.vehicleInfo}>
           <View style={styles.vehicleItem}>
-            <Ionicons name="car-outline" size={18} color="#666" />
+            <Ionicons name="car-outline" size={18} color="#888" />
             <Text style={styles.vehicleText}>
               {rideData.rider.vehicleColor ? `${rideData.rider.vehicleColor} ` : ''}
               {rideData.rider.vehicleModel}
             </Text>
           </View>
           <View style={styles.vehicleItem}>
-            <Ionicons name="card-outline" size={18} color="#666" />
+            <Ionicons name="card-outline" size={18} color="#888" />
             <Text style={styles.vehicleText}>{rideData.rider.vehicleNumber}</Text>
           </View>
         </View>
@@ -401,14 +392,14 @@ export default function CustomerLiveRide() {
         {/* Locations */}
         <View style={styles.locationsContainer}>
           <View style={styles.locationRow}>
-            <Ionicons name="radio-button-on" size={16} color="#4CAF50" />
+            <Ionicons name="radio-button-on" size={16} color="#00D9FF" />
             <Text style={styles.locationText} numberOfLines={1}>
               {rideData.pickup?.address || 'Pickup location'}
             </Text>
           </View>
           <View style={styles.locationDivider} />
           <View style={styles.locationRow}>
-            <Ionicons name="location" size={16} color="#F44336" />
+            <Ionicons name="location" size={16} color="#FF4757" />
             <Text style={styles.locationText} numberOfLines={1}>
               {rideData.dropoff?.address || 'Dropoff location'}
             </Text>
@@ -444,16 +435,17 @@ export default function CustomerLiveRide() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#000',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#000',
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: '#888',
   },
   map: {
     flex: 1,
@@ -475,7 +467,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   statusText: {
-    color: '#fff',
+    color: '#000',
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
@@ -483,11 +475,13 @@ const styles = StyleSheet.create({
   etaBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: '#111',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 16,
     gap: 4,
+    borderWidth: 1,
+    borderColor: '#1a1a1a',
   },
   etaText: {
     color: '#fff',
@@ -499,15 +493,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
+    backgroundColor: '#0a0a0a',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#1a1a1a',
   },
   driverHeader: {
     flexDirection: 'row',
@@ -518,12 +509,12 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#00D9FF',
     justifyContent: 'center',
     alignItems: 'center',
   },
   driverInitial: {
-    color: '#fff',
+    color: '#000',
     fontSize: 20,
     fontWeight: '700',
   },
@@ -534,7 +525,7 @@ const styles = StyleSheet.create({
   driverName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   ratingRow: {
@@ -544,24 +535,28 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: 14,
-    color: '#666',
+    color: '#888',
   },
   callButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 217, 255, 0.3)',
     cursor: 'pointer' as any,
   },
   vehicleInfo: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#111',
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#1a1a1a',
   },
   vehicleItem: {
     flexDirection: 'row',
@@ -570,7 +565,7 @@ const styles = StyleSheet.create({
   },
   vehicleText: {
     fontSize: 14,
-    color: '#333',
+    color: '#FFFFFF',
     fontWeight: '500',
   },
   otpSection: {
@@ -587,12 +582,12 @@ const styles = StyleSheet.create({
   locationText: {
     flex: 1,
     fontSize: 14,
-    color: '#333',
+    color: '#FFFFFF',
   },
   locationDivider: {
     width: 2,
     height: 20,
-    backgroundColor: '#ddd',
+    backgroundColor: '#333',
     marginLeft: 7,
     marginVertical: 4,
   },
@@ -602,27 +597,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: '#1a1a1a',
     marginBottom: 12,
   },
   fareLabel: {
     fontSize: 15,
-    color: '#666',
+    color: '#888',
   },
   fareAmount: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#000',
+    color: '#00D9FF',
   },
   cancelButton: {
-    backgroundColor: '#FEE',
+    backgroundColor: 'rgba(255, 71, 87, 0.1)',
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FF4757',
     cursor: 'pointer' as any,
   },
   cancelButtonText: {
-    color: '#F44336',
+    color: '#FF4757',
     fontSize: 16,
     fontWeight: '600',
   },

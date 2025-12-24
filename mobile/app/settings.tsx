@@ -15,8 +15,21 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useUserStore } from '../src/store/userStore';
 import { useSocket } from '../src/context/WSProvider';
-import { Colors } from '../src/constants/colors';
 import { APP_VERSION } from '../src/config/environment';
+
+const DARK = {
+  bg: '#000000',
+  bgSecondary: '#0a0a0a',
+  card: '#111111',
+  cardBorder: '#1a1a1a',
+  text: '#FFFFFF',
+  textSecondary: '#888888',
+  textMuted: '#555555',
+  neonBlue: '#00D9FF',
+  neonPink: '#FF2D92',
+  neonRed: '#FF4757',
+  neonGreen: '#00FF88',
+};
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -111,26 +124,26 @@ export default function SettingsScreen() {
       activeOpacity={0.7}
     >
       <View style={[styles.iconContainer, danger && styles.iconContainerDanger]}>
-        <Ionicons name={icon as any} size={22} color={danger ? '#F44336' : Colors.primary} />
+        <Ionicons name={icon as any} size={22} color={danger ? DARK.neonRed : DARK.neonBlue} />
       </View>
       <View style={styles.settingContent}>
         <Text style={[styles.settingTitle, danger && styles.settingTitleDanger]}>{title}</Text>
         {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
       </View>
       {rightElement || (showArrow && onPress && (
-        <Ionicons name="chevron-forward" size={20} color="#ccc" />
+        <Ionicons name="chevron-forward" size={20} color={DARK.textMuted} />
       ))}
     </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Settings</Text>
         <View style={styles.placeholder} />
@@ -168,8 +181,8 @@ export default function SettingsScreen() {
                 <Switch
                   value={notifications}
                   onValueChange={setNotifications}
-                  trackColor={{ false: '#ddd', true: Colors.primary + '50' }}
-                  thumbColor={notifications ? Colors.primary : '#f4f3f4'}
+                  trackColor={{ false: DARK.cardBorder, true: DARK.neonBlue }}
+                  thumbColor="#fff"
                 />
               }
               showArrow={false}
@@ -182,8 +195,8 @@ export default function SettingsScreen() {
                 <Switch
                   value={locationSharing}
                   onValueChange={setLocationSharing}
-                  trackColor={{ false: '#ddd', true: Colors.primary + '50' }}
-                  thumbColor={locationSharing ? Colors.primary : '#f4f3f4'}
+                  trackColor={{ false: DARK.cardBorder, true: DARK.neonBlue }}
+                  thumbColor="#fff"
                 />
               }
               showArrow={false}
@@ -246,7 +259,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: DARK.bg,
   },
   header: {
     flexDirection: 'row',
@@ -254,17 +267,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
+    backgroundColor: DARK.bgSecondary,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: DARK.cardBorder,
   },
   backButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: DARK.card,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: DARK.text,
   },
   placeholder: {
     width: 40,
@@ -278,14 +296,17 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#666',
+    color: DARK.textSecondary,
     marginLeft: 16,
     marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   sectionContent: {
-    backgroundColor: '#fff',
+    backgroundColor: DARK.card,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: DARK.cardBorder,
   },
   settingItem: {
     flexDirection: 'row',
@@ -293,19 +314,19 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: DARK.cardBorder,
   },
   iconContainer: {
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: Colors.primary + '15',
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
   },
   iconContainerDanger: {
-    backgroundColor: '#F4433615',
+    backgroundColor: 'rgba(255, 71, 87, 0.1)',
   },
   settingContent: {
     flex: 1,
@@ -313,14 +334,14 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#000',
+    color: DARK.text,
   },
   settingTitleDanger: {
-    color: '#F44336',
+    color: DARK.neonRed,
   },
   settingSubtitle: {
     fontSize: 13,
-    color: '#666',
+    color: DARK.textSecondary,
     marginTop: 2,
   },
   footer: {
@@ -329,11 +350,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: '#999',
+    color: DARK.textMuted,
   },
   footerSubtext: {
     fontSize: 12,
-    color: '#bbb',
+    color: DARK.textSecondary,
     marginTop: 4,
   },
 });

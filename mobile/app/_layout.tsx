@@ -26,7 +26,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <WSProvider>
-          <StatusBar style="dark" />
+          <StatusBar style="light" />
           <Stack
             screenOptions={{
               headerShown: false,
@@ -34,7 +34,7 @@ export default function RootLayout() {
             }}
           >
             <Stack.Screen name="index" />
-            <Stack.Screen name="auth/phone-login" />
+            <Stack.Screen name="auth/email-login" />
             <Stack.Screen name="customer/home" />
             <Stack.Screen name="customer/liveRide" />
             <Stack.Screen name="rider/home" />

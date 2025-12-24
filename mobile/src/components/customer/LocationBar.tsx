@@ -127,21 +127,21 @@ const LocationBar: React.FC<LocationBarProps> = ({
   return (
     <View style={[styles.container, { zIndex: containerZIndex }]}>
       <View style={styles.inputContainer}>
-        <Ionicons name={icon} size={20} color={isFocused ? '#4CAF50' : '#666'} style={styles.icon} />
+        <Ionicons name={icon} size={20} color={isFocused ? '#00D9FF' : '#666'} style={styles.icon} />
         <TextInput
           ref={inputRef}
           style={styles.input}
           placeholder={placeholder}
-          placeholderTextColor="#999"
+          placeholderTextColor="#666"
           value={query}
           onChangeText={handleSearch}
           onFocus={handleFocus}
           onBlur={handleBlur}
         />
-        {isLoading && <ActivityIndicator size="small" color="#4CAF50" style={styles.loader} />}
+        {isLoading && <ActivityIndicator size="small" color="#00D9FF" style={styles.loader} />}
         {query.length > 0 && !isLoading && (
           <TouchableOpacity onPress={clearInput} style={styles.clearButton}>
-            <Ionicons name="close-circle" size={20} color="#999" />
+            <Ionicons name="close-circle" size={20} color="#666" />
           </TouchableOpacity>
         )}
       </View>
@@ -161,7 +161,7 @@ const LocationBar: React.FC<LocationBarProps> = ({
                 activeOpacity={0.7}
               >
                 <View style={styles.predictionIcon}>
-                  <Ionicons name="location-outline" size={18} color="#666" />
+                  <Ionicons name="location-outline" size={18} color="#00D9FF" />
                 </View>
                 <View style={styles.predictionTextContainer}>
                   <Text style={styles.predictionTitle} numberOfLines={1}>
@@ -188,12 +188,12 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f8f8',
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    backgroundColor: '#0d0d0d',
+    borderRadius: 12,
+    paddingHorizontal: 14,
     paddingVertical: Platform.OS === 'web' ? 12 : 10,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: '#222',
   },
   icon: {
     marginRight: 10,
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 15,
-    color: '#000',
+    color: '#FFFFFF',
     ...(Platform.OS === 'web' && { outlineStyle: 'none' }),
   },
   loader: {
@@ -217,16 +217,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     marginTop: 4,
-    backgroundColor: '#fff',
-    borderRadius: 10,
+    backgroundColor: '#111111',
+    borderRadius: 12,
     maxHeight: 250,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 10,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: '#222',
     overflow: 'hidden',
   },
   predictionsList: {
@@ -238,13 +238,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#1a1a1a',
   },
   predictionIcon: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -254,12 +254,12 @@ const styles = StyleSheet.create({
   },
   predictionTitle: {
     fontSize: 14,
-    color: '#333',
+    color: '#FFFFFF',
     fontWeight: '500',
   },
   predictionSubtitle: {
     fontSize: 12,
-    color: '#999',
+    color: '#666',
     marginTop: 2,
   },
 });

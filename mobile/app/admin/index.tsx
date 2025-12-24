@@ -101,7 +101,7 @@ export default function AdminPanel() {
         }
       }
     } catch (error) {
-      console.log('Error fetching rides:', error);
+      // Silent fail for admin panel
     }
   };
 
@@ -146,7 +146,6 @@ export default function AdminPanel() {
     });
 
     setDriverLocation(location);
-    console.log('📍 Admin sent driver location:', location);
   };
 
   const handleMapMessage = (event: any) => {

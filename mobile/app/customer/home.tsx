@@ -277,7 +277,7 @@ export default function CustomerHome() {
   if (isLoadingLocation) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#000" />
+        <ActivityIndicator size="large" color="#00D9FF" />
         <Text style={styles.loadingText}>Getting your location...</Text>
       </View>
     );
@@ -285,7 +285,7 @@ export default function CustomerHome() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
 
       {/* Map */}
       <DraggableMap
@@ -324,16 +324,16 @@ export default function CustomerHome() {
       {/* Header Actions */}
       <View style={styles.header}>
         <Button style={styles.iconButton} onPress={handleMenuPress}>
-          <Ionicons name="menu" size={24} color="#000" />
+          <Ionicons name="menu" size={24} color="#FFFFFF" />
         </Button>
         <Button style={styles.iconButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#000" />
+          <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
         </Button>
       </View>
 
       {/* My Location Button */}
       <Button style={styles.myLocationButton} onPress={getCurrentLocation}>
-        <Ionicons name="locate" size={24} color="#000" />
+        <Ionicons name="locate" size={24} color="#00D9FF" />
       </Button>
 
       {/* Booking Bottom Sheet */}
@@ -350,21 +350,31 @@ export default function CustomerHome() {
   );
 }
 
+// Dark theme colors
+const DARK = {
+  bg: '#000000',
+  card: '#111111',
+  cardBorder: '#1a1a1a',
+  text: '#FFFFFF',
+  textSecondary: '#888888',
+  neonBlue: '#00D9FF',
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: DARK.bg,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: DARK.bg,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#666',
+    color: DARK.textSecondary,
   },
   header: {
     position: 'absolute',
@@ -375,17 +385,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#fff',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: DARK.card,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    borderWidth: 1,
+    borderColor: DARK.cardBorder,
+    shadowColor: DARK.neonBlue,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
     cursor: 'pointer' as any,
   },
   topBar: {
@@ -396,12 +408,14 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   locationInputs: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: DARK.card,
+    borderRadius: 16,
     padding: 16,
+    borderWidth: 1,
+    borderColor: DARK.cardBorder,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
   },
@@ -412,23 +426,25 @@ const styles = StyleSheet.create({
   dotLine: {
     width: 2,
     height: 20,
-    backgroundColor: '#ddd',
+    backgroundColor: '#333',
     borderRadius: 1,
   },
   myLocationButton: {
     position: 'absolute',
     bottom: 420,
     right: 20,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#fff',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: DARK.card,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    borderWidth: 1,
+    borderColor: DARK.cardBorder,
+    shadowColor: DARK.neonBlue,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
     elevation: 4,
     cursor: 'pointer' as any,
   },

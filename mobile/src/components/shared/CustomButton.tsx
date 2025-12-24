@@ -73,13 +73,13 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
   const getGradientColors = (): [string, string] => {
     switch (variant) {
       case 'primary':
-        return ['#2196F3', '#1565C0'];
+        return ['#00D9FF', '#0099CC']; // Neon blue gradient
       case 'success':
-        return ['#4CAF50', '#2E7D32'];
+        return ['#10B981', '#059669'];
       case 'danger':
-        return ['#F44336', '#C62828'];
+        return ['#FF4757', '#CC2936'];
       case 'secondary':
-        return ['#f5f5f5', '#e0e0e0'];
+        return ['#1a1a1a', '#111111'];
       default:
         return ['transparent', 'transparent'];
     }
@@ -88,11 +88,11 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
   const getTextColor = (): string => {
     switch (variant) {
       case 'outline':
-        return Colors.primary;
+        return '#00D9FF'; // Neon blue
       case 'secondary':
-        return '#333';
+        return '#FFFFFF';
       default:
-        return '#fff';
+        return '#000000'; // Dark text on neon buttons
     }
   };
 
@@ -234,16 +234,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   gradientButton: {
-    shadowColor: '#2196F3',
+    shadowColor: '#00D9FF',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
   outlineButton: {
     backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: Colors.primary,
+    borderWidth: 1,
+    borderColor: '#00D9FF',
   },
   fullWidth: {
     width: '100%',

@@ -143,7 +143,22 @@ export default function RiderHome() {
 
   const initializeLocation = async () => {
     try {
-      const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
+      let permissionResult;
+      try {
+        permissionResult = await ExpoLocation.requestForegroundPermissionsAsync();
+      } catch (permError) {
+        console.error('Permission request failed:', permError);
+        // Use default location if permission request crashes
+        setCurrentLocation({
+          latitude: 28.6139,
+          longitude: 77.2090,
+          address: '',
+        });
+        setIsLoadingLocation(false);
+        return;
+      }
+
+      const { status } = permissionResult;
       if (status !== 'granted') {
         Alert.alert('Permission denied', 'Location permission is required for drivers');
         setIsLoadingLocation(false);
@@ -215,16 +230,20 @@ export default function RiderHome() {
       });
     } catch (error) {
       console.error('Error getting location:', error);
-      // Use a default location for testing on web if all else fails
-      if (Platform.OS === 'web') {
-        console.warn('Using default location for web testing');
-        setCurrentLocation({
-          latitude: 28.6139, // Delhi coordinates
-          longitude: 77.2090,
-          address: '',
-        });
-      } else {
-        Alert.alert('Error', 'Failed to get current location');
+      // Use default location to prevent crash - location will update when available
+      console.warn('Using default location as fallback');
+      setCurrentLocation({
+        latitude: 28.6139, // Delhi coordinates
+        longitude: 77.2090,
+        address: '',
+      });
+
+      if (Platform.OS !== 'web') {
+        Alert.alert(
+          'Location Issue',
+          'Could not get your precise location. Using approximate location. Please ensure GPS is enabled.',
+          [{ text: 'OK' }]
+        );
       }
     } finally {
       setIsLoadingLocation(false);
@@ -432,7 +451,7 @@ export default function RiderHome() {
   if (isLoadingLocation) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#000" />
+        <ActivityIndicator size="large" color="#00D9FF" />
         <Text style={styles.loadingText}>Getting your location...</Text>
       </View>
     );
@@ -440,7 +459,7 @@ export default function RiderHome() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
 
       {/* Header */}
       <RiderHeader
@@ -535,18 +554,18 @@ export default function RiderHome() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#000000',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#000000',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#666',
+    color: '#888',
   },
   mapContainer: {
     flex: 1,
@@ -559,32 +578,31 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 20,
     alignSelf: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 217, 255, 0.15)',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 217, 255, 0.3)',
   },
   zoneText: {
-    color: '#fff',
+    color: '#00D9FF',
     fontSize: 13,
     fontWeight: '600',
   },
   requestsContainer: {
     maxHeight: '50%',
-    backgroundColor: '#fff',
+    backgroundColor: '#0a0a0a',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#1a1a1a',
   },
   requestsTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#000',
+    color: '#FFFFFF',
     marginBottom: 12,
     paddingHorizontal: 20,
   },
@@ -592,10 +610,12 @@ const styles = StyleSheet.create({
     flex: 0.4,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#0a0a0a',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 40,
+    borderTopWidth: 1,
+    borderTopColor: '#1a1a1a',
   },
   noRequestsIcon: {
     fontSize: 48,
@@ -604,7 +624,7 @@ const styles = StyleSheet.create({
   noRequestsText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   noRequestsSubtext: {
@@ -616,10 +636,12 @@ const styles = StyleSheet.create({
     flex: 0.4,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#0a0a0a',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 40,
+    borderTopWidth: 1,
+    borderTopColor: '#1a1a1a',
   },
   offlineIcon: {
     fontSize: 48,
@@ -628,7 +650,7 @@ const styles = StyleSheet.create({
   offlineText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   offlineSubtext: {

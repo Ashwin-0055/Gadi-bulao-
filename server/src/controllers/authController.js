@@ -152,7 +152,6 @@ const sendOtp = async (req, res) => {
 
     // 5. Generate OTP
     const otp = generateOTP();
-    console.log(`[OTP] Generated for ${normalizedEmail}: ${otp}`); // Remove in production
 
     // 6. Hash OTP before storing (security)
     const hashedOtp = await hashOTP(otp);

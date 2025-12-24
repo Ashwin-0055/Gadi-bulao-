@@ -96,7 +96,7 @@ const RiderHeader: React.FC<RiderHeaderProps> = ({
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={isOnDuty ? ['#1a1a2e', '#16213e'] : ['#2d3436', '#636e72']}
+        colors={isOnDuty ? ['#0a0a0a', '#111111'] : ['#0a0a0a', '#0d0d0d']}
         style={styles.gradientBackground}
       >
         {/* Top Row */}
@@ -127,7 +127,7 @@ const RiderHeader: React.FC<RiderHeaderProps> = ({
             <Switch
               value={isOnDuty}
               onValueChange={onDutyToggle}
-              trackColor={{ false: 'rgba(255,255,255,0.2)', true: '#4CAF50' }}
+              trackColor={{ false: 'rgba(255,255,255,0.2)', true: '#00D9FF' }}
               thumbColor="#fff"
               ios_backgroundColor="rgba(255,255,255,0.2)"
             />
@@ -186,7 +186,7 @@ const RiderHeader: React.FC<RiderHeaderProps> = ({
             ]}
           />
           <Text style={styles.statusText}>You're online - Ready to accept rides</Text>
-          <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+          <Ionicons name="checkmark-circle" size={20} color="#00D9FF" />
         </View>
       )}
 
@@ -252,8 +252,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
   },
   dutyToggleActive: {
-    backgroundColor: 'rgba(76,175,80,0.2)',
-    borderColor: '#4CAF50',
+    backgroundColor: 'rgba(0, 217, 255, 0.15)',
+    borderColor: '#00D9FF',
   },
   dutyIndicatorContainer: {
     width: 12,
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#666',
   },
   dutyIndicatorActive: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#00D9FF',
   },
   dutyText: {
     fontSize: 14,
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
   },
   dutyTextActive: {
-    color: '#4CAF50',
+    color: '#00D9FF',
   },
   welcomeSection: {
     marginBottom: 20,
@@ -329,32 +329,28 @@ const styles = StyleSheet.create({
   statusBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E8F5E9',
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
     marginHorizontal: 20,
     marginTop: -12,
     borderRadius: 12,
     padding: 14,
     gap: 10,
-    shadowColor: '#4CAF50',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 217, 255, 0.2)',
   },
   statusBannerOffline: {
-    backgroundColor: '#f5f5f5',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
+    backgroundColor: '#111',
+    borderColor: '#1a1a1a',
   },
   pulseIndicator: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#00D9FF',
   },
   statusText: {
     fontSize: 13,
-    color: '#2E7D32',
+    color: '#00D9FF',
     fontWeight: '600',
     flex: 1,
   },

@@ -92,12 +92,13 @@ const RideBookingSheet: React.FC<RideBookingSheetProps> = ({
       snapPoints={snapPoints}
       enablePanDownToClose={false}
       handleIndicatorStyle={styles.handleIndicator}
+      backgroundStyle={styles.sheetBackground}
     >
       <BottomSheetView style={styles.contentContainer}>
         {/* Loading Route Indicator */}
         {isLoadingRoute && (
           <View style={styles.loadingRoute}>
-            <ActivityIndicator size="small" color="#4CAF50" />
+            <ActivityIndicator size="small" color="#00D9FF" />
             <Text style={styles.loadingRouteText}>Calculating prices...</Text>
           </View>
         )}
@@ -106,11 +107,11 @@ const RideBookingSheet: React.FC<RideBookingSheetProps> = ({
         {!isLoadingRoute && distance && duration && (
           <View style={styles.tripInfo}>
             <View style={styles.tripInfoItem}>
-              <Ionicons name="navigate" size={16} color="#666" />
+              <Ionicons name="navigate" size={16} color="#00D9FF" />
               <Text style={styles.tripInfoText}>{formatDistance(distance)}</Text>
             </View>
             <View style={styles.tripInfoItem}>
-              <Ionicons name="time-outline" size={16} color="#666" />
+              <Ionicons name="time-outline" size={16} color="#00D9FF" />
               <Text style={styles.tripInfoText}>{formatDuration(duration)}</Text>
             </View>
           </View>
@@ -118,7 +119,7 @@ const RideBookingSheet: React.FC<RideBookingSheetProps> = ({
 
         {/* Info Note */}
         <View style={styles.infoNote}>
-          <Ionicons name="information-circle" size={16} color="#666" />
+          <Ionicons name="information-circle" size={16} color="#00D9FF" />
           <Text style={styles.infoNoteText}>
             Most drivers accept rides under 100 km for best availability
           </Text>
@@ -146,10 +147,10 @@ const RideBookingSheet: React.FC<RideBookingSheetProps> = ({
                   </View>
                 </View>
                 <View style={styles.vehicleFare}>
-                  <Text style={styles.fareAmount}>₹{fare}</Text>
+                  <Text style={[styles.fareAmount, isSelected && styles.fareAmountSelected]}>₹{fare}</Text>
                   {isSelected && (
                     <View style={styles.selectedBadge}>
-                      <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                      <Ionicons name="checkmark-circle" size={20} color="#00D9FF" />
                     </View>
                   )}
                 </View>
@@ -163,7 +164,7 @@ const RideBookingSheet: React.FC<RideBookingSheetProps> = ({
           {isSearching ? (
             <>
               <View style={styles.searchingContainer}>
-                <ActivityIndicator size="large" color="#4CAF50" />
+                <ActivityIndicator size="large" color="#00D9FF" />
                 <Text style={styles.searchingTitle}>Searching for drivers...</Text>
                 <Text style={styles.searchingText}>
                   Looking for nearby {VEHICLE_TYPES.find((v) => v.type === selectedVehicle)?.name.toLowerCase()}s
@@ -174,7 +175,7 @@ const RideBookingSheet: React.FC<RideBookingSheetProps> = ({
                 onPress={onCancelSearch}
                 activeOpacity={0.7}
               >
-                <Ionicons name="close-circle" size={20} color="#F44336" />
+                <Ionicons name="close-circle" size={20} color="#FF4757" />
                 <Text style={styles.cancelButtonText}>Stop Searching</Text>
               </TouchableOpacity>
             </>
@@ -194,49 +195,61 @@ const RideBookingSheet: React.FC<RideBookingSheetProps> = ({
 };
 
 const styles = StyleSheet.create({
+  sheetBackground: {
+    backgroundColor: '#0a0a0a',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
   contentContainer: {
     flex: 1,
     padding: 20,
   },
   handleIndicator: {
-    backgroundColor: '#ccc',
+    backgroundColor: '#333',
+    width: 40,
   },
   loadingRoute: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
+    backgroundColor: '#111',
+    borderRadius: 12,
     padding: 12,
     marginBottom: 20,
     gap: 10,
+    borderWidth: 1,
+    borderColor: '#1a1a1a',
   },
   loadingRouteText: {
     fontSize: 14,
-    color: '#666',
+    color: '#888',
     fontWeight: '500',
   },
   infoNote: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF8E1',
-    borderRadius: 8,
+    backgroundColor: 'rgba(0, 217, 255, 0.08)',
+    borderRadius: 10,
     padding: 10,
     marginBottom: 16,
     gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 217, 255, 0.15)',
   },
   infoNoteText: {
     flex: 1,
     fontSize: 12,
-    color: '#666',
+    color: '#888',
   },
   tripInfo: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: '#111',
+    borderRadius: 12,
+    padding: 14,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#1a1a1a',
   },
   tripInfoItem: {
     flexDirection: 'row',
@@ -244,33 +257,33 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   tripInfoText: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
+    fontSize: 15,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: '#FFFFFF',
     marginBottom: 12,
   },
   vehicleList: {
-    gap: 12,
+    gap: 10,
     marginBottom: 20,
   },
   vehicleCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: '#111',
+    borderRadius: 14,
     padding: 16,
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
+    borderWidth: 1,
+    borderColor: '#1a1a1a',
   },
   vehicleCardSelected: {
-    borderColor: '#4CAF50',
-    backgroundColor: '#f1f8f4',
+    borderColor: '#00D9FF',
+    backgroundColor: 'rgba(0, 217, 255, 0.08)',
   },
   vehicleInfo: {
     flexDirection: 'row',
@@ -286,7 +299,7 @@ const styles = StyleSheet.create({
   vehicleName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: '#FFFFFF',
   },
   vehicleDescription: {
     fontSize: 13,
@@ -299,7 +312,10 @@ const styles = StyleSheet.create({
   fareAmount: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#000',
+    color: '#FFFFFF',
+  },
+  fareAmountSelected: {
+    color: '#00D9FF',
   },
   selectedBadge: {
     marginTop: 4,
@@ -315,7 +331,7 @@ const styles = StyleSheet.create({
   searchingTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: '#FFFFFF',
     marginTop: 12,
   },
   searchingText: {
@@ -328,10 +344,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: '#F44336',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 71, 87, 0.1)',
+    borderWidth: 1,
+    borderColor: '#FF4757',
+    borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 24,
     gap: 8,
@@ -339,7 +355,7 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#F44336',
+    color: '#FF4757',
   },
 });
 

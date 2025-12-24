@@ -303,18 +303,10 @@ export default function RiderLiveRide() {
             if (!socketService || !rideData) return;
 
             try {
-              console.log('🚫 Driver cancelling ride:', rideData._id);
-
-              // Listen for cancellation confirmation
-              socketService.onRideCancelledConfirm((data) => {
-                console.log('✅ Ride cancelled confirmed:', data);
-              });
-
               socketService.cancelRide({ rideId: rideData._id, reason: 'Driver cancelled' });
               clearActiveRide();
               router.replace('/rider/home');
             } catch (error) {
-              console.error('❌ Cancel ride error:', error);
               Alert.alert('Error', 'Failed to cancel ride');
             }
           },
@@ -382,7 +374,7 @@ export default function RiderLiveRide() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
 
       {/* Map */}
       <LiveRideMap
@@ -531,16 +523,17 @@ export default function RiderLiveRide() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#000',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#000',
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: '#888',
   },
   map: {
     flex: 1,
@@ -552,35 +545,33 @@ const styles = StyleSheet.create({
     right: 20,
   },
   etaContainer: {
-    backgroundColor: '#000',
+    backgroundColor: '#111',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1a1a1a',
   },
   etaTime: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#fff',
+    color: '#00D9FF',
     marginBottom: 4,
   },
   etaLabel: {
     fontSize: 14,
-    color: '#fff',
-    opacity: 0.8,
+    color: '#888',
   },
   bottomSheet: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
+    backgroundColor: '#0a0a0a',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#1a1a1a',
   },
   statusBar: {
     height: 4,
@@ -599,12 +590,12 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#2196F3',
+    backgroundColor: '#00D9FF',
     justifyContent: 'center',
     alignItems: 'center',
   },
   customerInitial: {
-    color: '#fff',
+    color: '#000',
     fontSize: 20,
     fontWeight: '700',
   },
@@ -615,7 +606,7 @@ const styles = StyleSheet.create({
   customerName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   ratingRow: {
@@ -625,30 +616,34 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: 14,
-    color: '#666',
+    color: '#888',
   },
   callButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 217, 255, 0.3)',
     cursor: 'pointer' as any,
   },
   destinationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#111',
     borderRadius: 12,
     padding: 14,
     marginBottom: 16,
     gap: 10,
+    borderWidth: 1,
+    borderColor: '#1a1a1a',
   },
   destinationText: {
     flex: 1,
     fontSize: 14,
-    color: '#333',
+    color: '#FFFFFF',
   },
   fareRow: {
     flexDirection: 'row',
@@ -656,16 +651,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: '#1a1a1a',
   },
   fareLabel: {
     fontSize: 15,
-    color: '#666',
+    color: '#888',
   },
   fareAmount: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#4CAF50',
+    color: '#00D9FF',
   },
   actionsContainer: {
     padding: 20,

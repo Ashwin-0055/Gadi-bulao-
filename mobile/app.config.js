@@ -13,9 +13,9 @@ module.exports = {
       enabled: false
     },
     splash: {
-      image: "./assets/splash.png",
+      image: "./assets/splash-icon.png",
       resizeMode: "contain",
-      backgroundColor: "#2E7D32"
+      backgroundColor: "#000000"
     },
     assetBundlePatterns: ["**/*"],
     ios: {
@@ -34,7 +34,7 @@ module.exports = {
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
-        backgroundColor: "#2E7D32"
+        backgroundColor: "#000000"
       },
       package: "com.gadibulao.app",
       permissions: [

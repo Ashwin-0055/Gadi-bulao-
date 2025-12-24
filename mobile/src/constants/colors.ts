@@ -1,12 +1,12 @@
 /**
  * App Color Palette
- * Uber-like color scheme
+ * Modern neon-themed color scheme
  */
 
 export const Colors = {
   // Primary
   primary: '#000000',
-  primaryLight: '#333333',
+  primaryLight: '#1a1a1a',
   primaryDark: '#000000',
 
   // Secondary
@@ -14,8 +14,14 @@ export const Colors = {
   secondaryLight: '#F5F5F5',
   secondaryDark: '#E0E0E0',
 
-  // Accent
-  accent: '#00D9FF',  // Cyan accent
+  // Neon Accents (matching logo)
+  neonBlue: '#00D9FF',
+  neonPink: '#FF2D92',
+  neonRed: '#FF4757',
+  neonPurple: '#8B5CF6',
+
+  // Accent (using neon blue)
+  accent: '#00D9FF',
   accentLight: '#66E5FF',
   accentDark: '#00A3CC',
 
