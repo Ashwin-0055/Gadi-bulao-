@@ -127,6 +127,26 @@ const rideSchema = new mongoose.Schema({
   cancellationReason: {
     type: String,
     default: null
+  },
+
+  // OTP for ride verification
+  otp: {
+    startOtp: {
+      type: String,
+      default: null
+    },
+    endOtp: {
+      type: String,
+      default: null
+    },
+    startOtpVerified: {
+      type: Boolean,
+      default: false
+    },
+    endOtpVerified: {
+      type: Boolean,
+      default: false
+    }
   }
 });
 

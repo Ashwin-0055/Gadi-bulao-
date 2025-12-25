@@ -154,10 +154,10 @@ export default function RiderHome() {
         permissionResult = await ExpoLocation.requestForegroundPermissionsAsync();
       } catch (permError) {
         console.error('Permission request failed:', permError);
-        // Use default location if permission request crashes
+        // Use approximate location if permission request crashes
         setCurrentLocation({
-          latitude: 28.6139,
-          longitude: 77.2090,
+          latitude: 20.936,
+          longitude: 78.995,
           address: '',
         });
         setIsLoadingLocation(false);
@@ -194,7 +194,7 @@ export default function RiderHome() {
               {
                 enableHighAccuracy: true,
                 timeout: 10000,
-                maximumAge: 60000, // Accept cached location up to 1 minute old
+                maximumAge: 30000, // Accept cached location up to 30 seconds old
               }
             );
           });
@@ -215,39 +215,60 @@ export default function RiderHome() {
         }
       }
 
-      // For mobile or web fallback - use expo-location with timeout
-      const locationPromise = ExpoLocation.getCurrentPositionAsync({
-        accuracy: Platform.OS === 'web'
-          ? ExpoLocation.Accuracy.Balanced
-          : ExpoLocation.Accuracy.BestForNavigation,
-      });
+      // For mobile - use expo-location with high accuracy and timeout
+      // Try high accuracy first, fallback to balanced if it takes too long
+      try {
+        const location = await Promise.race([
+          ExpoLocation.getCurrentPositionAsync({
+            accuracy: ExpoLocation.Accuracy.High,
+            mayShowUserSettingsDialog: true,
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('High accuracy timeout')), 8000)
+          ),
+        ]);
 
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Location timeout')), 15000);
-      });
+        const { latitude, longitude, accuracy } = location.coords;
+        console.log(`Location acquired with accuracy: ${accuracy}m`);
+        setCurrentLocation({
+          latitude,
+          longitude,
+          address: '',
+        });
+      } catch (highAccuracyError) {
+        console.warn('High accuracy failed, trying balanced:', highAccuracyError);
 
-      const location = await Promise.race([locationPromise, timeoutPromise]);
+        // Fallback to balanced accuracy
+        const location = await Promise.race([
+          ExpoLocation.getCurrentPositionAsync({
+            accuracy: ExpoLocation.Accuracy.Balanced,
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Location timeout')), 10000)
+          ),
+        ]);
 
-      const { latitude, longitude } = location.coords;
-      setCurrentLocation({
-        latitude,
-        longitude,
-        address: '',
-      });
+        const { latitude, longitude } = location.coords;
+        setCurrentLocation({
+          latitude,
+          longitude,
+          address: '',
+        });
+      }
     } catch (error) {
       console.error('Error getting location:', error);
-      // Use default location to prevent crash - location will update when available
-      console.warn('Using default location as fallback');
+      // Use approximate location to prevent crash - location will update when tracking starts
+      console.warn('Using approximate location as fallback');
       setCurrentLocation({
-        latitude: 28.6139, // Delhi coordinates
-        longitude: 77.2090,
+        latitude: 20.936, // Approximate Butibori coordinates
+        longitude: 78.995,
         address: '',
       });
 
       if (Platform.OS !== 'web') {
         Alert.alert(
           'Location Issue',
-          'Could not get your precise location. Using approximate location. Please ensure GPS is enabled.',
+          'Could not get your precise location. Please ensure GPS is enabled and try again.',
           [{ text: 'OK' }]
         );
       }
@@ -260,12 +281,15 @@ export default function RiderHome() {
     try {
       // Skip background permission request on web (not supported)
       if (Platform.OS !== 'web') {
-        const { status } = await ExpoLocation.requestBackgroundPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert(
-            'Background Location Required',
-            'Please enable background location to receive ride requests while app is in background'
-          );
+        try {
+          const { status } = await ExpoLocation.requestBackgroundPermissionsAsync();
+          if (status !== 'granted') {
+            console.log('Background location permission not granted');
+            // Continue anyway - foreground tracking will still work
+          }
+        } catch (bgError) {
+          console.warn('Background permission request failed:', bgError);
+          // Continue with foreground tracking
         }
       }
 
@@ -273,13 +297,16 @@ export default function RiderHome() {
       if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.geolocation) {
         const watchId = navigator.geolocation.watchPosition(
           (position) => {
-            const { latitude, longitude } = position.coords;
-            const newLocation = { latitude, longitude, address: '' };
-            setCurrentLocation(newLocation);
+            const { latitude, longitude, accuracy } = position.coords;
+            // Only update if accuracy is reasonable (less than 100m)
+            if (!accuracy || accuracy < 100) {
+              const newLocation = { latitude, longitude, address: '' };
+              setCurrentLocation(newLocation);
 
-            // Send location update to server
-            if (socketService && isOnDuty) {
-              socketService.updateLocation(newLocation);
+              // Send location update to server
+              if (socketService && isOnDuty) {
+                socketService.updateLocation(newLocation);
+              }
             }
           },
           (error) => {
@@ -299,23 +326,26 @@ export default function RiderHome() {
         return;
       }
 
-      // Watch location updates with highest accuracy (mobile)
+      // Watch location updates with high accuracy (mobile)
       const watcher = await ExpoLocation.watchPositionAsync(
         {
-          accuracy: Platform.OS === 'web'
-            ? ExpoLocation.Accuracy.Balanced
-            : ExpoLocation.Accuracy.BestForNavigation,
-          timeInterval: 3000, // Update every 3 seconds
-          distanceInterval: 5, // Or every 5 meters
+          accuracy: ExpoLocation.Accuracy.High,
+          timeInterval: 2000, // Update every 2 seconds
+          distanceInterval: 3, // Or every 3 meters
         },
         (location) => {
-          const { latitude, longitude } = location.coords;
-          const newLocation = { latitude, longitude, address: '' };
-          setCurrentLocation(newLocation);
+          const { latitude, longitude, accuracy } = location.coords;
+          // Only update if accuracy is reasonable (less than 50m for mobile)
+          if (!accuracy || accuracy < 50) {
+            const newLocation = { latitude, longitude, address: '' };
+            setCurrentLocation(newLocation);
 
-          // Send location update to server
-          if (socketService && isOnDuty) {
-            socketService.updateLocation(newLocation);
+            // Send location update to server
+            if (socketService && isOnDuty) {
+              socketService.updateLocation(newLocation);
+            }
+          } else {
+            console.log(`Skipping low accuracy location: ${accuracy}m`);
           }
         }
       );
@@ -323,6 +353,12 @@ export default function RiderHome() {
       setLocationWatcher(watcher);
     } catch (error) {
       console.error('Error starting location tracking:', error);
+      // Don't crash - continue with current location
+      Alert.alert(
+        'Location Tracking',
+        'Location tracking could not be started. Your location may not update in real-time.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
