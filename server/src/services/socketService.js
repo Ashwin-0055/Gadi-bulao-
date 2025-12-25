@@ -30,10 +30,15 @@ class SocketService {
    * Handle new socket connection
    */
   handleConnection(socket) {
-    console.log(`[Socket] Connected: ${socket.id}`);
+    const isAdmin = socket.user?.isAdmin === true;
 
-    // Store socket mapping
-    this.userSockets.set(socket.user.userId, socket.id);
+    if (isAdmin) {
+      console.log(`[Socket] Admin panel connected: ${socket.id}`);
+    } else {
+      console.log(`[Socket] User connected: ${socket.id} (${socket.user.userId})`);
+      // Store socket mapping only for regular users
+      this.userSockets.set(socket.user.userId, socket.id);
+    }
 
     // Register event handlers
     this.registerEventHandlers(socket);
@@ -42,7 +47,8 @@ class SocketService {
     socket.emit('connected', {
       message: 'Connected to server',
       userId: socket.user.userId,
-      socketId: socket.id
+      socketId: socket.id,
+      isAdmin: isAdmin
     });
   }
 
@@ -357,16 +363,21 @@ class SocketService {
         'riderProfile.isOnDuty': false
       });
 
-      // Store active ride mapping
-      const customerSocketId = this.userSockets.get(ride.customer.toString());
+      // Store active ride mapping - get customer ID from original ride document
+      const customerId = ride.customer.toString();
+      const customerSocketId = this.userSockets.get(customerId);
+
+      // Log for debugging
+      console.log(`[Ride] ${rideId} accepted by driver ${socket.user.userId}`);
+      console.log(`[Ride] Customer ID: ${customerId}, Socket ID: ${customerSocketId || 'NOT FOUND'}`);
+      console.log(`[Ride] Active user sockets: ${this.userSockets.size}`);
+
       this.activeRides.set(rideId, {
         customerSocketId,
         riderSocketId: socket.id,
-        customerId: ride.customer.toString(),
+        customerId: customerId,
         riderId: socket.user.userId
       });
-
-      console.log(`[Ride] ${rideId} accepted by driver ${socket.user.userId}`);
 
       // Generate OTPs for ride start and completion
       const startOtp = Math.floor(1000 + Math.random() * 9000).toString();
@@ -379,8 +390,22 @@ class SocketService {
       });
 
       // Notify customer with full ride details including OTPs
-      if (customerSocketId) {
-        this.io.to(customerSocketId).emit('rideAccepted', {
+      // Try to find customer socket again if not found initially
+      let finalCustomerSocketId = customerSocketId;
+      if (!finalCustomerSocketId) {
+        // Try different formats of customer ID
+        for (const [userId, socketId] of this.userSockets.entries()) {
+          if (userId === customerId || userId.toString() === customerId) {
+            finalCustomerSocketId = socketId;
+            console.log(`[Ride] Found customer socket via iteration: ${socketId}`);
+            break;
+          }
+        }
+      }
+
+      if (finalCustomerSocketId) {
+        console.log(`[Ride] Sending rideAccepted to customer socket: ${finalCustomerSocketId}`);
+        this.io.to(finalCustomerSocketId).emit('rideAccepted', {
           rideId: ride._id,
           status: 'ACCEPTED',
           pickup: {
@@ -411,6 +436,8 @@ class SocketService {
             endOtp: endOtp
           }
         });
+      } else {
+        console.log(`[Ride] WARNING: Customer socket not found for ride ${rideId}`);
       }
 
       // Notify driver
@@ -959,7 +986,14 @@ class SocketService {
    * Handle socket disconnect
    */
   async handleDisconnect(socket) {
-    console.log(`[Socket] Disconnected: ${socket.id}`);
+    const isAdmin = socket.user?.isAdmin === true;
+
+    if (isAdmin) {
+      console.log(`[Socket] Admin panel disconnected: ${socket.id}`);
+      return; // No cleanup needed for admin connections
+    }
+
+    console.log(`[Socket] User disconnected: ${socket.id} (${socket.user.userId})`);
 
     // Clean up zone subscriptions
     zoneManager.handleDisconnect(socket);

@@ -9,6 +9,9 @@ import {
   StatusBar,
   ActivityIndicator,
   Platform,
+  Modal,
+  TextInput,
+  TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ExpoLocation from 'expo-location';
@@ -45,6 +48,9 @@ export default function RiderHome() {
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const [locationWatcher, setLocationWatcher] = useState<ExpoLocation.LocationSubscription | null>(null);
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState(user?.phone || '');
+  const [pendingDutyAction, setPendingDutyAction] = useState(false);
 
   // Fetch latest profile from server and update stats
   const refreshProfile = useCallback(async () => {
@@ -356,6 +362,27 @@ export default function RiderHome() {
     clearRideRequests();
   };
 
+  // Validate phone number format (Indian: 10 digits)
+  const isValidPhone = (phone: string): boolean => {
+    const cleaned = phone.replace(/\D/g, '');
+    return cleaned.length === 10;
+  };
+
+  const handlePhoneSubmit = () => {
+    if (!isValidPhone(phoneNumber)) {
+      Alert.alert('Invalid Number', 'Please enter a valid 10-digit phone number');
+      return;
+    }
+
+    setShowPhoneModal(false);
+
+    // Proceed with going on duty
+    if (pendingDutyAction) {
+      setOnDuty(true);
+      setPendingDutyAction(false);
+    }
+  };
+
   const handleDutyToggle = (value: boolean) => {
     if (!currentLocation) {
       Alert.alert('Error', 'Location not available');
@@ -368,6 +395,13 @@ export default function RiderHome() {
         'You have pending ride requests. Please respond to them before going off duty.',
         [{ text: 'OK' }]
       );
+      return;
+    }
+
+    // Check phone number before going on duty
+    if (value && !user?.phone && !phoneNumber) {
+      setPendingDutyAction(true);
+      setShowPhoneModal(true);
       return;
     }
 
@@ -547,6 +581,49 @@ export default function RiderHome() {
           </Text>
         </View>
       )}
+
+      {/* Phone Number Modal */}
+      <Modal
+        visible={showPhoneModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPhoneModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Phone Number Required</Text>
+            <Text style={styles.modalSubtitle}>
+              Your phone number is needed for customers to contact you during rides.
+            </Text>
+            <TextInput
+              style={styles.phoneInput}
+              placeholder="Enter 10-digit number"
+              placeholderTextColor="#666"
+              keyboardType="phone-pad"
+              maxLength={10}
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => {
+                  setShowPhoneModal(false);
+                  setPendingDutyAction(false);
+                }}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalSubmitButton}
+                onPress={handlePhoneSubmit}
+              >
+                <Text style={styles.modalSubmitText}>Continue</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -657,5 +734,75 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#111111',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+    borderWidth: 1,
+    borderColor: '#222',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  phoneInput: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 18,
+    color: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#333',
+    textAlign: 'center',
+    letterSpacing: 2,
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: '#222',
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    color: '#888',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalSubmitButton: {
+    flex: 1,
+    backgroundColor: '#00D9FF',
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+  },
+  modalSubmitText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

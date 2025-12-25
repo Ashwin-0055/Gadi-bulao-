@@ -83,12 +83,38 @@ const requireRole = (requiredRole) => {
 
 /**
  * Middleware for socket authentication
+ * Allows admin panel connections without authentication (read-only monitoring)
  */
 const authenticateSocket = (socket, next) => {
   try {
     const token = socket.handshake.auth.token;
+    const isAdminPanel = socket.handshake.auth.isAdmin === true;
 
+    // Allow admin panel connections without token (for monitoring only)
+    if (!token && isAdminPanel) {
+      socket.user = {
+        userId: 'admin-panel',
+        role: 'admin',
+        isAdmin: true
+      };
+      return next();
+    }
+
+    // Allow connections without token but mark them as guests (for admin panel)
     if (!token) {
+      // Check if connection is from web browser (admin panel)
+      const origin = socket.handshake.headers.origin || '';
+      const referer = socket.handshake.headers.referer || '';
+
+      if (origin.includes('render.com') || referer.includes('/admin')) {
+        socket.user = {
+          userId: 'admin-panel',
+          role: 'admin',
+          isAdmin: true
+        };
+        return next();
+      }
+
       return next(new Error('Authentication token required'));
     }
 

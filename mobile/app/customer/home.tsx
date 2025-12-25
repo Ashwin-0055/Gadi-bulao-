@@ -10,6 +10,8 @@ import {
   StatusBar,
   Platform,
   Pressable,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -43,6 +45,9 @@ export default function CustomerHome() {
   const [currentRideId, setCurrentRideId] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState(user?.phone || '');
+  const [pendingVehicleType, setPendingVehicleType] = useState<'bike' | 'auto' | 'cab' | null>(null);
 
   // Get current location on mount
   useEffect(() => {
@@ -203,22 +208,54 @@ export default function CustomerHome() {
     setPickupLocation({ ...location, address });
   };
 
+  // Validate phone number format (Indian: 10 digits)
+  const isValidPhone = (phone: string): boolean => {
+    const cleaned = phone.replace(/\D/g, '');
+    return cleaned.length === 10;
+  };
+
+  const handlePhoneSubmit = async () => {
+    if (!isValidPhone(phoneNumber)) {
+      Alert.alert('Invalid Number', 'Please enter a valid 10-digit phone number');
+      return;
+    }
+
+    // TODO: Save phone to user profile via API
+    setShowPhoneModal(false);
+
+    // Proceed with booking
+    if (pendingVehicleType) {
+      proceedWithBooking(pendingVehicleType);
+      setPendingVehicleType(null);
+    }
+  };
+
   const handleBookRide = async (vehicleType: 'bike' | 'auto' | 'cab') => {
     if (!pickupLocation || !dropoffLocation || !distance || !socketService) {
       Alert.alert('Error', 'Please select both pickup and dropoff locations');
       return;
     }
 
+    // Check if phone number is available
+    if (!user?.phone && !phoneNumber) {
+      setPendingVehicleType(vehicleType);
+      setShowPhoneModal(true);
+      return;
+    }
+
+    proceedWithBooking(vehicleType);
+  };
+
+  const proceedWithBooking = (vehicleType: 'bike' | 'auto' | 'cab') => {
     setIsSearching(true);
 
     try {
-      socketService.requestRide({
-        pickup: pickupLocation,
-        dropoff: dropoffLocation,
+      socketService?.requestRide({
+        pickup: pickupLocation!,
+        dropoff: dropoffLocation!,
         vehicleType,
       });
     } catch (error) {
-      console.error('Error requesting ride:', error);
       Alert.alert('Error', 'Failed to request ride. Please try again.');
       setIsSearching(false);
     }
@@ -346,6 +383,49 @@ export default function CustomerHome() {
         isSearching={isSearching}
         isLoadingRoute={isLoadingRoute}
       />
+
+      {/* Phone Number Modal */}
+      <Modal
+        visible={showPhoneModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPhoneModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Phone Number Required</Text>
+            <Text style={styles.modalSubtitle}>
+              Your phone number is needed for the driver to contact you during the ride.
+            </Text>
+            <TextInput
+              style={styles.phoneInput}
+              placeholder="Enter 10-digit number"
+              placeholderTextColor="#666"
+              keyboardType="phone-pad"
+              maxLength={10}
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => {
+                  setShowPhoneModal(false);
+                  setPendingVehicleType(null);
+                }}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalSubmitButton}
+                onPress={handlePhoneSubmit}
+              >
+                <Text style={styles.modalSubmitText}>Continue</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -447,5 +527,74 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
     cursor: 'pointer' as any,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: DARK.card,
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+    borderWidth: 1,
+    borderColor: DARK.cardBorder,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: DARK.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: DARK.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  phoneInput: {
+    backgroundColor: '#0d0d0d',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 18,
+    color: DARK.text,
+    borderWidth: 1,
+    borderColor: '#222',
+    textAlign: 'center',
+    letterSpacing: 2,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    marginTop: 20,
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    color: DARK.textSecondary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalSubmitButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: DARK.neonBlue,
+    alignItems: 'center',
+  },
+  modalSubmitText: {
+    color: '#000',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

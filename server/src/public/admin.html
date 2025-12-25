@@ -337,11 +337,21 @@
     }
 
     function connectSocket() {
-      socket = io(API_URL, { transports: ['websocket'], timeout: 60000 });
+      socket = io(API_URL, {
+        transports: ['websocket', 'polling'],
+        timeout: 60000,
+        auth: { isAdmin: true }
+      });
       socket.on('connect', () => {
         document.getElementById('statusDot').classList.add('connected');
         document.getElementById('statusText').textContent = 'Connected';
         addLog('Connected to server', 'success');
+      });
+      socket.on('connect_error', (error) => {
+        document.getElementById('statusDot').classList.remove('connected');
+        document.getElementById('statusText').textContent = 'Connection Error';
+        addLog('Connection error: ' + error.message, 'error');
+        console.error('Socket connection error:', error);
       });
       socket.on('disconnect', () => {
         document.getElementById('statusDot').classList.remove('connected');
@@ -350,6 +360,8 @@
       });
       socket.on('newRideRequest', () => { addLog('New ride request', 'info'); fetchRides(); });
       socket.on('rideAccepted', () => { addLog('Ride accepted', 'success'); fetchRides(); });
+      socket.on('rideStatusUpdate', (data) => { addLog(`Ride ${data.rideId}: ${data.status}`, 'info'); fetchRides(); });
+      socket.on('driverLocationUpdate', () => { fetchRides(); });
     }
 
     async function fetchDashboardStats() {
