@@ -8,6 +8,14 @@ const connectDB = require('./config/db');
 const socketService = require('./services/socketService');
 const { authenticateSocket } = require('./middleware/auth');
 
+// Security middleware
+const {
+  generalLimiter,
+  corsOptions,
+  socketCorsOptions,
+  helmetConfig,
+} = require('./middleware/security');
+
 // Import routes
 const authRoutes = require('./routes/auth');
 const rideRoutes = require('./routes/ride');
@@ -16,20 +24,31 @@ const rideRoutes = require('./routes/ride');
 const app = express();
 const server = http.createServer(app);
 
-// Initialize Socket.io
+// Initialize Socket.io with secure CORS
 const io = new Server(server, {
-  cors: {
-    origin: '*', // In production, specify your mobile app's origin
-    methods: ['GET', 'POST'],
-    credentials: true
-  },
+  cors: socketCorsOptions,
   transports: ['websocket', 'polling']
 });
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ============================================================================
+// SECURITY MIDDLEWARE (Order matters!)
+// ============================================================================
+
+// 1. Security headers (Helmet)
+app.use(helmetConfig);
+
+// 2. Trust proxy (for Render, Heroku, etc.)
+app.set('trust proxy', 1);
+
+// 3. CORS configuration
+app.use(cors(corsOptions));
+
+// 4. Rate limiting (applied to all routes)
+app.use(generalLimiter);
+
+// 5. Body parsers
+app.use(express.json({ limit: '10kb' })); // Limit body size
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
 // Serve static files
 app.use('/static', express.static(path.join(__dirname, 'public')));
@@ -57,8 +76,9 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// Stats API for admin panel
-app.get('/api/stats', (req, res) => {
+// Stats API for admin panel (protected)
+const { adminLimiter, adminApiKeyAuth } = require('./middleware/security');
+app.get('/api/stats', adminLimiter, adminApiKeyAuth, (req, res) => {
   res.status(200).json({
     success: true,
     data: socketService.getStats()

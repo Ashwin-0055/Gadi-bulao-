@@ -17,85 +17,103 @@ const {
   deleteUserById
 } = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
+const {
+  otpLimiter,
+  authLimiter,
+  adminLimiter,
+  adminApiKeyAuth
+} = require('../middleware/security');
+
+// ============================================================================
+// ADMIN ROUTES (Protected with API key or rate limited)
+// ============================================================================
 
 /**
  * @route   GET /api/auth/users
  * @desc    Get all users (Admin)
- * @access  Public (for admin panel - should be protected in production)
+ * @access  Admin (API key recommended in production)
  */
-router.get('/users', getAllUsers);
+router.get('/users', adminLimiter, adminApiKeyAuth, getAllUsers);
 
 /**
  * @route   GET /api/auth/drivers
  * @desc    Get all drivers (Admin)
- * @access  Public (for admin panel)
+ * @access  Admin (API key recommended in production)
  */
-router.get('/drivers', getAllDrivers);
+router.get('/drivers', adminLimiter, adminApiKeyAuth, getAllDrivers);
 
 /**
  * @route   GET /api/auth/users/:userId
  * @desc    Get user by ID (Admin)
- * @access  Public (for admin panel)
+ * @access  Admin (API key recommended in production)
  */
-router.get('/users/:userId', getUserById);
+router.get('/users/:userId', adminLimiter, adminApiKeyAuth, getUserById);
 
 /**
  * @route   PATCH /api/auth/users/:userId
  * @desc    Update user by ID (Admin)
- * @access  Public (for admin panel)
+ * @access  Admin (API key recommended in production)
  */
-router.patch('/users/:userId', updateUserById);
+router.patch('/users/:userId', adminLimiter, adminApiKeyAuth, updateUserById);
 
 /**
  * @route   DELETE /api/auth/users/:userId
  * @desc    Delete user by ID (Admin)
- * @access  Public (for admin panel)
+ * @access  Admin (API key recommended in production)
  */
-router.delete('/users/:userId', deleteUserById);
+router.delete('/users/:userId', adminLimiter, adminApiKeyAuth, deleteUserById);
+
+// ============================================================================
+// PUBLIC AUTH ROUTES (Rate limited)
+// ============================================================================
 
 /**
  * @route   POST /api/auth/send-otp
  * @desc    Send OTP to email for verification
  * @access  Public
- * @security Rate limited, OTP hashed
+ * @security Strict rate limiting (3 requests/minute)
  */
-router.post('/send-otp', sendOtp);
+router.post('/send-otp', otpLimiter, sendOtp);
 
 /**
  * @route   POST /api/auth/verify-otp
  * @desc    Verify OTP and login/register user
  * @access  Public
- * @security Attempt limiting, account locking
+ * @security Strict rate limiting (5 requests/15 min)
  */
-router.post('/verify-otp', verifyOtp);
+router.post('/verify-otp', authLimiter, verifyOtp);
 
 /**
  * @route   POST /api/auth/login
  * @desc    Phone-based login (creates user if not exists)
  * @access  Public
+ * @security Rate limited (5 requests/15 min)
  */
-router.post('/login', phoneLogin);
+router.post('/login', authLimiter, phoneLogin);
 
 /**
  * @route   POST /api/auth/firebase-sync
  * @desc    Sync existing Firebase user with database (login)
  * @access  Public
+ * @security Rate limited (5 requests/15 min)
  */
-router.post('/firebase-sync', firebaseSync);
+router.post('/firebase-sync', authLimiter, firebaseSync);
 
 /**
  * @route   POST /api/auth/firebase-register
  * @desc    Register new user via Firebase
  * @access  Public
+ * @security Rate limited (5 requests/15 min)
  */
-router.post('/firebase-register', firebaseRegister);
+router.post('/firebase-register', authLimiter, firebaseRegister);
 
 /**
  * @route   POST /api/auth/refresh
  * @desc    Refresh access token using refresh token
  * @access  Public
+ * @security Rate limited
  */
-router.post('/refresh', refreshToken);
+router.post('/refresh', authLimiter, refreshToken);
 
 /**
  * @route   POST /api/auth/switch-role
