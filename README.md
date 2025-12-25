@@ -164,6 +164,13 @@ GOOGLE_MAPS_API_KEY=your-google-maps-key
 
 **Ashwin Yadav** - [@Ashwin-0055](https://github.com/Ashwin-0055)
 
+## Contact
+
+Have questions or want to collaborate? Reach out!
+
+- **Email:** hustlerashwin2400@gmail.com
+- **GitHub:** [@Ashwin-0055](https://github.com/Ashwin-0055)
+
 ## License
 
 MIT
