@@ -312,7 +312,36 @@
     let users = [];
     let markers = {};
 
+    // Admin API Key - stored in localStorage for convenience
+    let ADMIN_API_KEY = localStorage.getItem('adminApiKey') || '';
+
+    // Helper function for authenticated API calls
+    async function adminFetch(url, options = {}) {
+      const headers = { ...options.headers };
+      if (ADMIN_API_KEY) {
+        headers['X-Admin-Api-Key'] = ADMIN_API_KEY;
+      }
+      return fetch(url, { ...options, headers });
+    }
+
+    // Prompt for API key if not set
+    function promptApiKey() {
+      const key = prompt('Enter Admin API Key (leave empty if not configured):');
+      if (key !== null) {
+        ADMIN_API_KEY = key;
+        localStorage.setItem('adminApiKey', key);
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+      // Add API key button to header
+      const header = document.querySelector('.header');
+      const keyBtn = document.createElement('button');
+      keyBtn.textContent = '🔑 API Key';
+      keyBtn.style.cssText = 'background:#333;border:1px solid #444;color:#fff;padding:8px 16px;border-radius:8px;cursor:pointer;margin-left:auto;';
+      keyBtn.onclick = promptApiKey;
+      header.appendChild(keyBtn);
+
       initMap();
       connectSocket();
       fetchDashboardStats();
@@ -367,8 +396,8 @@
     async function fetchDashboardStats() {
       try {
         const [ridesRes, driversRes] = await Promise.all([
-          fetch(`${API_URL}/api/rides/active`),
-          fetch(`${API_URL}/api/auth/drivers`)
+          adminFetch(`${API_URL}/api/rides/active`),
+          adminFetch(`${API_URL}/api/auth/drivers`)
         ]);
         const ridesData = await ridesRes.json();
         const driversData = await driversRes.json();
@@ -382,7 +411,7 @@
 
     async function fetchRides() {
       try {
-        const res = await fetch(`${API_URL}/api/rides/active`);
+        const res = await adminFetch(`${API_URL}/api/rides/active`);
         const data = await res.json();
         rides = data.data || [];
         renderRides();
@@ -431,7 +460,7 @@
     async function updateStatus(status) {
       if (!selectedRide) return;
       try {
-        const res = await fetch(`${API_URL}/api/rides/${selectedRide.rideId}/status`, {
+        const res = await adminFetch(`${API_URL}/api/rides/${selectedRide.rideId}/status`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status })
@@ -443,7 +472,7 @@
     async function cancelRide() {
       if (!selectedRide || !confirm('Cancel this ride?')) return;
       try {
-        await fetch(`${API_URL}/api/rides/${selectedRide.rideId}/cancel`, {
+        await adminFetch(`${API_URL}/api/rides/${selectedRide.rideId}/cancel`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ reason: 'Cancelled by admin' })
@@ -461,7 +490,7 @@
         let url = `${API_URL}/api/auth/drivers?`;
         if (onDuty) url += `onDuty=${onDuty}&`;
         if (vehicle) url += `vehicleType=${vehicle}`;
-        const res = await fetch(url);
+        const res = await adminFetch(url);
         const data = await res.json();
         drivers = data.data?.drivers || [];
         renderDrivers();
@@ -517,7 +546,7 @@
         const role = document.getElementById('roleFilter').value;
         let url = `${API_URL}/api/auth/users?`;
         if (role) url += `role=${role}`;
-        const res = await fetch(url);
+        const res = await adminFetch(url);
         const data = await res.json();
         users = data.data?.users || [];
         renderUsers();
@@ -568,7 +597,7 @@
 
     async function editUser(userId, type) {
       try {
-        const res = await fetch(`${API_URL}/api/auth/users/${userId}`);
+        const res = await adminFetch(`${API_URL}/api/auth/users/${userId}`);
         const data = await res.json();
         const user = data.data?.user;
         if (!user) return alert('User not found');
@@ -602,7 +631,7 @@
       }
 
       try {
-        const res = await fetch(`${API_URL}/api/auth/users/${userId}`, {
+        const res = await adminFetch(`${API_URL}/api/auth/users/${userId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updates)
@@ -619,7 +648,7 @@
     async function deleteUser(userId) {
       if (!confirm('Are you sure you want to delete this user? This cannot be undone.')) return;
       try {
-        const res = await fetch(`${API_URL}/api/auth/users/${userId}`, { method: 'DELETE' });
+        const res = await adminFetch(`${API_URL}/api/auth/users/${userId}`, { method: 'DELETE' });
         if ((await res.json()).success) {
           fetchUsers();
           fetchDrivers();
