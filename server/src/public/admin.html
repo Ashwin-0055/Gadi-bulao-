@@ -321,15 +321,57 @@
       if (ADMIN_API_KEY) {
         headers['X-Admin-Api-Key'] = ADMIN_API_KEY;
       }
-      return fetch(url, { ...options, headers });
+      const response = await fetch(url, { ...options, headers });
+
+      // Check for auth errors
+      if (response.status === 401 || response.status === 403) {
+        const data = await response.json();
+        showAuthError(data.message || 'Authentication failed');
+        throw new Error(data.message || 'Authentication failed');
+      }
+
+      return response;
     }
 
-    // Prompt for API key if not set
+    // Show authentication error banner
+    function showAuthError(message) {
+      let banner = document.getElementById('authErrorBanner');
+      if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'authErrorBanner';
+        banner.style.cssText = 'background:#F44336;color:white;padding:12px 20px;text-align:center;font-weight:500;display:flex;justify-content:space-between;align-items:center;';
+        banner.innerHTML = `
+          <span id="authErrorMsg"></span>
+          <button onclick="promptApiKey();location.reload();" style="background:white;color:#F44336;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:600;">Enter API Key</button>
+        `;
+        document.body.insertBefore(banner, document.body.firstChild);
+      }
+      document.getElementById('authErrorMsg').textContent = '⚠️ ' + message + ' - Click to enter your Admin API Key';
+      banner.style.display = 'flex';
+    }
+
+    // Prompt for API key
     function promptApiKey() {
-      const key = prompt('Enter Admin API Key (leave empty if not configured):');
-      if (key !== null) {
-        ADMIN_API_KEY = key;
-        localStorage.setItem('adminApiKey', key);
+      const key = prompt('Enter Admin API Key:');
+      if (key !== null && key.trim() !== '') {
+        ADMIN_API_KEY = key.trim();
+        localStorage.setItem('adminApiKey', key.trim());
+        // Hide error banner if exists
+        const banner = document.getElementById('authErrorBanner');
+        if (banner) banner.style.display = 'none';
+        return true;
+      }
+      return false;
+    }
+
+    // Update API key button appearance
+    function updateKeyButton(btn) {
+      if (ADMIN_API_KEY) {
+        btn.textContent = '🔑 API Key ✓';
+        btn.style.background = '#2E7D32';
+      } else {
+        btn.textContent = '🔑 API Key';
+        btn.style.background = '#333';
       }
     }
 
@@ -337,10 +379,29 @@
       // Add API key button to header
       const header = document.querySelector('.header');
       const keyBtn = document.createElement('button');
-      keyBtn.textContent = '🔑 API Key';
-      keyBtn.style.cssText = 'background:#333;border:1px solid #444;color:#fff;padding:8px 16px;border-radius:8px;cursor:pointer;margin-left:auto;';
-      keyBtn.onclick = promptApiKey;
+      keyBtn.id = 'apiKeyBtn';
+      keyBtn.style.cssText = 'border:1px solid #444;color:#fff;padding:8px 16px;border-radius:8px;cursor:pointer;margin-left:auto;';
+      keyBtn.onclick = () => {
+        if (promptApiKey()) {
+          updateKeyButton(keyBtn);
+          // Reload data with new key
+          fetchDashboardStats();
+          fetchRides();
+          fetchDrivers();
+          fetchUsers();
+        }
+      };
+      updateKeyButton(keyBtn);
       header.appendChild(keyBtn);
+
+      // If no API key, prompt immediately
+      if (!ADMIN_API_KEY) {
+        setTimeout(() => {
+          if (promptApiKey()) {
+            updateKeyButton(keyBtn);
+          }
+        }, 500);
+      }
 
       initMap();
       connectSocket();
