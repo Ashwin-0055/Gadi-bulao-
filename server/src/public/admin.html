@@ -181,7 +181,7 @@
           <div id="ridesList">
             <div class="empty-state"><div class="icon">🚗</div><div>No active rides</div></div>
           </div>
-          <button class="btn btn-secondary" onclick="fetchRides()" style="width: 100%; margin-top: 12px;">🔄 Refresh</button>
+          <button class="btn btn-secondary" id="btnRefreshRides" style="width: 100%; margin-top: 12px;">🔄 Refresh</button>
         </div>
       </div>
       <div class="main">
@@ -190,10 +190,10 @@
           <div class="control-group">
             <div class="control-label">Selected Ride: <span id="selectedRideId">None</span></div>
             <div class="btn-group">
-              <button class="btn btn-info" onclick="updateStatus('ARRIVED')" id="btnArrived" disabled>📍 Arrived</button>
-              <button class="btn btn-primary" onclick="updateStatus('STARTED')" id="btnStarted" disabled>🚗 Start</button>
-              <button class="btn btn-success" onclick="updateStatus('COMPLETED')" id="btnCompleted" disabled>✅ Complete</button>
-              <button class="btn btn-danger" onclick="cancelRide()" id="btnCancel" disabled>❌ Cancel</button>
+              <button class="btn btn-info" id="btnArrived" data-status="ARRIVED" disabled>📍 Arrived</button>
+              <button class="btn btn-primary" id="btnStarted" data-status="STARTED" disabled>🚗 Start</button>
+              <button class="btn btn-success" id="btnCompleted" data-status="COMPLETED" disabled>✅ Complete</button>
+              <button class="btn btn-danger" id="btnCancel" disabled>❌ Cancel</button>
             </div>
           </div>
         </div>
@@ -205,19 +205,19 @@
   <div id="tab-drivers" class="tab-content">
     <div style="padding: 20px;">
       <div class="search-box">
-        <input type="text" id="driverSearch" placeholder="Search by name or phone..." oninput="searchDrivers()">
-        <select id="driverFilter" onchange="fetchDrivers()">
+        <input type="text" id="driverSearch" placeholder="Search by name or phone...">
+        <select id="driverFilter">
           <option value="">All Drivers</option>
           <option value="true">Online Only</option>
           <option value="false">Offline Only</option>
         </select>
-        <select id="vehicleFilter" onchange="fetchDrivers()">
+        <select id="vehicleFilter">
           <option value="">All Vehicles</option>
           <option value="bike">Bike</option>
           <option value="auto">Auto</option>
           <option value="cab">Cab</option>
         </select>
-        <button class="btn btn-secondary" onclick="fetchDrivers()">🔄 Refresh</button>
+        <button class="btn btn-secondary" id="btnRefreshDrivers">🔄 Refresh</button>
       </div>
       <table class="data-table">
         <thead>
@@ -243,13 +243,13 @@
   <div id="tab-users" class="tab-content">
     <div style="padding: 20px;">
       <div class="search-box">
-        <input type="text" id="userSearch" placeholder="Search by name or phone..." oninput="searchUsers()">
-        <select id="roleFilter" onchange="fetchUsers()">
+        <input type="text" id="userSearch" placeholder="Search by name or phone...">
+        <select id="roleFilter">
           <option value="">All Roles</option>
           <option value="customer">Customers</option>
           <option value="rider">Drivers</option>
         </select>
-        <button class="btn btn-secondary" onclick="fetchUsers()">🔄 Refresh</button>
+        <button class="btn btn-secondary" id="btnRefreshUsers">🔄 Refresh</button>
       </div>
       <table class="data-table">
         <thead>
@@ -275,9 +275,9 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3>Edit User</h3>
-        <button class="modal-close" onclick="closeModal('editUserModal')">&times;</button>
+        <button class="modal-close" id="btnCloseModal">&times;</button>
       </div>
-      <form id="editUserForm" onsubmit="saveUser(event)">
+      <form id="editUserForm">
         <input type="hidden" id="editUserId">
         <div class="form-group">
           <label>Name</label>
@@ -298,7 +298,7 @@
           </div>
         </div>
         <div class="btn-group" style="justify-content: flex-end;">
-          <button type="button" class="btn btn-secondary" onclick="closeModal('editUserModal')">Cancel</button>
+          <button type="button" class="btn btn-secondary" id="btnCancelEdit">Cancel</button>
           <button type="submit" class="btn btn-primary">Save Changes</button>
         </div>
       </form>
@@ -343,10 +343,21 @@
         banner = document.createElement('div');
         banner.id = 'authErrorBanner';
         banner.style.cssText = 'background:#F44336;color:white;padding:12px 20px;text-align:center;font-weight:500;display:flex;justify-content:space-between;align-items:center;position:relative;z-index:100;';
-        banner.innerHTML = `
-          <span id="authErrorMsg"></span>
-          <button onclick="promptApiKey();location.reload();" style="background:white;color:#F44336;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:600;">Enter API Key</button>
-        `;
+
+        const msgSpan = document.createElement('span');
+        msgSpan.id = 'authErrorMsg';
+
+        const btn = document.createElement('button');
+        btn.textContent = 'Enter API Key';
+        btn.style.cssText = 'background:white;color:#F44336;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:600;';
+        btn.addEventListener('click', function() {
+          promptApiKey();
+          location.reload();
+        });
+
+        banner.appendChild(msgSpan);
+        banner.appendChild(btn);
+
         // Insert after header, before tabs
         const tabs = document.querySelector('.tabs');
         if (tabs) {
@@ -413,6 +424,7 @@
       }
 
       initTabs();
+      initButtonHandlers();
       initMap();
       connectSocket();
       fetchDashboardStats();
@@ -468,6 +480,123 @@
             }
           }
         });
+      }
+    }
+
+    // Initialize button click handlers using event delegation
+    function initButtonHandlers() {
+      // Handle clicks on the entire document for dynamically created buttons
+      document.addEventListener('click', function(e) {
+        // Handle delete button clicks
+        const deleteBtn = e.target.closest('.btn-delete');
+        if (deleteBtn) {
+          const userId = deleteBtn.getAttribute('data-id');
+          if (userId) {
+            deleteUser(userId);
+          }
+          return;
+        }
+
+        // Handle edit button clicks
+        const editBtn = e.target.closest('.btn-edit');
+        if (editBtn) {
+          const userId = editBtn.getAttribute('data-id');
+          const userType = editBtn.getAttribute('data-type') || 'user';
+          if (userId) {
+            editUser(userId, userType);
+          }
+          return;
+        }
+
+        // Handle ride card clicks
+        const rideCard = e.target.closest('.ride-card');
+        if (rideCard) {
+          const rideId = rideCard.getAttribute('data-ride-id');
+          if (rideId) {
+            selectRide(rideId);
+          }
+          return;
+        }
+
+        // Handle status button clicks
+        const statusBtn = e.target.closest('[data-status]');
+        if (statusBtn && !statusBtn.disabled) {
+          const status = statusBtn.getAttribute('data-status');
+          if (status) {
+            updateStatus(status);
+          }
+          return;
+        }
+      });
+
+      // Refresh buttons
+      const btnRefreshRides = document.getElementById('btnRefreshRides');
+      if (btnRefreshRides) {
+        btnRefreshRides.addEventListener('click', fetchRides);
+      }
+
+      const btnRefreshDrivers = document.getElementById('btnRefreshDrivers');
+      if (btnRefreshDrivers) {
+        btnRefreshDrivers.addEventListener('click', fetchDrivers);
+      }
+
+      const btnRefreshUsers = document.getElementById('btnRefreshUsers');
+      if (btnRefreshUsers) {
+        btnRefreshUsers.addEventListener('click', fetchUsers);
+      }
+
+      // Cancel ride button
+      const btnCancel = document.getElementById('btnCancel');
+      if (btnCancel) {
+        btnCancel.addEventListener('click', cancelRide);
+      }
+
+      // Modal buttons
+      const btnCloseModal = document.getElementById('btnCloseModal');
+      if (btnCloseModal) {
+        btnCloseModal.addEventListener('click', function() {
+          closeModal('editUserModal');
+        });
+      }
+
+      const btnCancelEdit = document.getElementById('btnCancelEdit');
+      if (btnCancelEdit) {
+        btnCancelEdit.addEventListener('click', function() {
+          closeModal('editUserModal');
+        });
+      }
+
+      // Form submit
+      const editUserForm = document.getElementById('editUserForm');
+      if (editUserForm) {
+        editUserForm.addEventListener('submit', saveUser);
+      }
+
+      // Search inputs
+      const driverSearch = document.getElementById('driverSearch');
+      if (driverSearch) {
+        driverSearch.addEventListener('input', searchDrivers);
+      }
+
+      const userSearch = document.getElementById('userSearch');
+      if (userSearch) {
+        userSearch.addEventListener('input', searchUsers);
+      }
+
+      // Filter selects
+      const driverFilter = document.getElementById('driverFilter');
+      if (driverFilter) {
+        driverFilter.addEventListener('change', fetchDrivers);
+      }
+
+      const vehicleFilter = document.getElementById('vehicleFilter');
+      if (vehicleFilter) {
+        vehicleFilter.addEventListener('change', fetchDrivers);
+      }
+
+      const roleFilter = document.getElementById('roleFilter');
+      if (roleFilter) {
+        roleFilter.addEventListener('change', fetchUsers);
       }
     }
 
@@ -536,7 +665,7 @@
         return;
       }
       container.innerHTML = rides.map(r => `
-        <div class="ride-card ${selectedRide?.rideId === r.rideId ? 'selected' : ''}" onclick="selectRide('${r.rideId}')">
+        <div class="ride-card ${selectedRide?.rideId === r.rideId ? 'selected' : ''}" data-ride-id="${r.rideId}">
           <div style="font-size: 12px; color: #999;">${r.rideId.substring(0, 12)}...</div>
           <div style="font-weight: 600; margin: 4px 0;">${r.customerName} <span class="badge badge-info">${r.vehicleType}</span></div>
           <div style="font-size: 13px; color: #666;">📍 ${(r.pickup?.address || 'Pickup').substring(0, 30)}...</div>
@@ -624,8 +753,8 @@
           <td>₹${d.earnings.toLocaleString()}</td>
           <td>⭐ ${d.rating.toFixed(1)}</td>
           <td class="user-actions">
-            <button class="btn btn-sm btn-secondary" onclick="editUser('${d.id}', 'driver')">✏️</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteUser('${d.id}')">🗑️</button>
+            <button class="btn btn-sm btn-secondary btn-edit" data-id="${d.id}" data-type="driver">✏️</button>
+            <button class="btn btn-sm btn-danger btn-delete" data-id="${d.id}">🗑️</button>
           </td>
         </tr>
       `).join('');
@@ -645,8 +774,8 @@
           <td>₹${d.earnings.toLocaleString()}</td>
           <td>⭐ ${d.rating.toFixed(1)}</td>
           <td class="user-actions">
-            <button class="btn btn-sm btn-secondary" onclick="editUser('${d.id}', 'driver')">✏️</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteUser('${d.id}')">🗑️</button>
+            <button class="btn btn-sm btn-secondary btn-edit" data-id="${d.id}" data-type="driver">✏️</button>
+            <button class="btn btn-sm btn-danger btn-delete" data-id="${d.id}">🗑️</button>
           </td>
         </tr>
       `).join('');
@@ -679,8 +808,8 @@
           <td>⭐ ${(u.riderProfile?.rating || u.customerProfile?.rating || 5).toFixed(1)}</td>
           <td>${new Date(u.createdAt).toLocaleDateString()}</td>
           <td class="user-actions">
-            <button class="btn btn-sm btn-secondary" onclick="editUser('${u.id}')">✏️</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}')">🗑️</button>
+            <button class="btn btn-sm btn-secondary btn-edit" data-id="${u.id}" data-type="user">✏️</button>
+            <button class="btn btn-sm btn-danger btn-delete" data-id="${u.id}">🗑️</button>
           </td>
         </tr>
       `).join('');
@@ -699,8 +828,8 @@
           <td>⭐ ${(u.riderProfile?.rating || u.customerProfile?.rating || 5).toFixed(1)}</td>
           <td>${new Date(u.createdAt).toLocaleDateString()}</td>
           <td class="user-actions">
-            <button class="btn btn-sm btn-secondary" onclick="editUser('${u.id}')">✏️</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}')">🗑️</button>
+            <button class="btn btn-sm btn-secondary btn-edit" data-id="${u.id}" data-type="user">✏️</button>
+            <button class="btn btn-sm btn-danger btn-delete" data-id="${u.id}">🗑️</button>
           </td>
         </tr>
       `).join('');
@@ -801,12 +930,6 @@
       while (container.children.length > 50) container.removeChild(container.lastChild);
     }
 
-    // Make functions globally accessible for onclick handlers
-    window.deleteUser = deleteUser;
-    window.editUser = editUser;
-    window.showTab = showTab;
-    window.closeModal = closeModal;
-    window.promptApiKey = promptApiKey;
   </script>
 </body>
 </html>
