@@ -428,6 +428,30 @@ const adminCancelRide = async (req, res) => {
   }
 };
 
+/**
+ * Delete all rides (Admin) - USE WITH CAUTION
+ * Temporary function for demo/testing purposes
+ */
+const deleteAllRides = async (req, res) => {
+  try {
+    const result = await Ride.deleteMany({});
+
+    res.status(200).json({
+      success: true,
+      message: `Deleted ${result.deletedCount} rides successfully`,
+      deletedCount: result.deletedCount
+    });
+
+  } catch (error) {
+    console.error('[Error] Delete all rides:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete all rides',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   calculateFareEstimate,
   getRideHistory,
@@ -435,5 +459,6 @@ module.exports = {
   cancelRide,
   getActiveRides,
   updateRideStatus,
-  adminCancelRide
+  adminCancelRide,
+  deleteAllRides
 };

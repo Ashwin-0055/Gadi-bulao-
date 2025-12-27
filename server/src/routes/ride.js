@@ -7,7 +7,8 @@ const {
   cancelRide,
   getActiveRides,
   updateRideStatus,
-  adminCancelRide
+  adminCancelRide,
+  deleteAllRides
 } = require('../controllers/rideController');
 const { authenticate } = require('../middleware/auth');
 const { adminLimiter, adminApiKeyAuth } = require('../middleware/security');
@@ -36,6 +37,13 @@ router.patch('/:rideId/status', adminLimiter, adminApiKeyAuth, updateRideStatus)
  * @access  Admin (API key recommended in production)
  */
 router.post('/:rideId/cancel', adminLimiter, adminApiKeyAuth, adminCancelRide);
+
+/**
+ * @route   DELETE /api/rides/all
+ * @desc    Delete all rides (Admin) - TEMPORARY for demo purposes
+ * @access  Admin (API key required)
+ */
+router.delete('/all', adminLimiter, adminApiKeyAuth, deleteAllRides);
 
 // ============================================================================
 // AUTHENTICATED USER ROUTES

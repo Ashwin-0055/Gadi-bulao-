@@ -14,7 +14,8 @@ const {
   getAllDrivers,
   getUserById,
   updateUserById,
-  deleteUserById
+  deleteUserById,
+  deleteAllUsers
 } = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
 const {
@@ -62,6 +63,13 @@ router.patch('/users/:userId', adminLimiter, adminApiKeyAuth, updateUserById);
  * @access  Admin (API key recommended in production)
  */
 router.delete('/users/:userId', adminLimiter, adminApiKeyAuth, deleteUserById);
+
+/**
+ * @route   DELETE /api/auth/users
+ * @desc    Delete all users (Admin) - USE WITH CAUTION
+ * @access  Admin (API key required)
+ */
+router.delete('/users', adminLimiter, adminApiKeyAuth, deleteAllUsers);
 
 // ============================================================================
 // PUBLIC AUTH ROUTES (Rate limited)

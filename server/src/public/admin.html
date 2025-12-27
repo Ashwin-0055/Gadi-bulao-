@@ -182,6 +182,7 @@
             <div class="empty-state"><div class="icon">🚗</div><div>No active rides</div></div>
           </div>
           <button class="btn btn-secondary" id="btnRefreshRides" style="width: 100%; margin-top: 12px;">🔄 Refresh</button>
+          <button class="btn btn-danger" id="btnDeleteAllRides" style="width: 100%; margin-top: 8px;">🗑️ Delete All Rides</button>
         </div>
       </div>
       <div class="main">
@@ -250,6 +251,7 @@
           <option value="rider">Drivers</option>
         </select>
         <button class="btn btn-secondary" id="btnRefreshUsers">🔄 Refresh</button>
+        <button class="btn btn-danger" id="btnDeleteAllUsers">🗑️ Delete All Users</button>
       </div>
       <table class="data-table">
         <thead>
@@ -598,6 +600,17 @@
       if (roleFilter) {
         roleFilter.addEventListener('change', fetchUsers);
       }
+
+      // Delete All buttons
+      const btnDeleteAllUsers = document.getElementById('btnDeleteAllUsers');
+      if (btnDeleteAllUsers) {
+        btnDeleteAllUsers.addEventListener('click', deleteAllUsers);
+      }
+
+      const btnDeleteAllRides = document.getElementById('btnDeleteAllRides');
+      if (btnDeleteAllRides) {
+        btnDeleteAllRides.addEventListener('click', deleteAllRides);
+      }
     }
 
     function initMap() {
@@ -913,6 +926,75 @@
         console.error('Delete error:', e);
         alert('❌ Error deleting user: ' + e.message);
         addLog('Delete error: ' + e.message, 'error');
+      }
+    }
+
+    // Delete all users - TEMPORARY for demo purposes
+    async function deleteAllUsers() {
+      if (!ADMIN_API_KEY) {
+        alert('⚠️ Please enter your Admin API Key first.');
+        promptApiKey();
+        return;
+      }
+
+      const confirmMsg = '⚠️ WARNING: This will delete ALL users from the database!\n\nType "DELETE ALL" to confirm:';
+      const userInput = prompt(confirmMsg);
+
+      if (userInput !== 'DELETE ALL') {
+        alert('Deletion cancelled. You must type "DELETE ALL" exactly to confirm.');
+        return;
+      }
+
+      try {
+        const res = await adminFetch(`${API_URL}/api/auth/users`, { method: 'DELETE' });
+        const data = await res.json();
+
+        if (data.success) {
+          alert(`✅ ${data.message}`);
+          fetchUsers();
+          fetchDrivers();
+          fetchDashboardStats();
+          addLog(`Deleted all users: ${data.deletedCount} removed`, 'warning');
+        } else {
+          alert('❌ Failed: ' + (data.message || 'Unknown error'));
+        }
+      } catch (e) {
+        console.error('Delete all users error:', e);
+        alert('❌ Error: ' + e.message);
+      }
+    }
+
+    // Delete all rides - TEMPORARY for demo purposes
+    async function deleteAllRides() {
+      if (!ADMIN_API_KEY) {
+        alert('⚠️ Please enter your Admin API Key first.');
+        promptApiKey();
+        return;
+      }
+
+      const confirmMsg = '⚠️ WARNING: This will delete ALL rides from the database!\n\nType "DELETE ALL" to confirm:';
+      const userInput = prompt(confirmMsg);
+
+      if (userInput !== 'DELETE ALL') {
+        alert('Deletion cancelled. You must type "DELETE ALL" exactly to confirm.');
+        return;
+      }
+
+      try {
+        const res = await adminFetch(`${API_URL}/api/rides/all`, { method: 'DELETE' });
+        const data = await res.json();
+
+        if (data.success) {
+          alert(`✅ ${data.message}`);
+          fetchRides();
+          fetchDashboardStats();
+          addLog(`Deleted all rides: ${data.deletedCount} removed`, 'warning');
+        } else {
+          alert('❌ Failed: ' + (data.message || 'Unknown error'));
+        }
+      } catch (e) {
+        console.error('Delete all rides error:', e);
+        alert('❌ Error: ' + e.message);
       }
     }
 

@@ -1243,6 +1243,29 @@ const deleteUserById = async (req, res) => {
   }
 };
 
+/**
+ * Delete all users (Admin) - USE WITH CAUTION
+ */
+const deleteAllUsers = async (req, res) => {
+  try {
+    const result = await User.deleteMany({});
+
+    res.status(200).json({
+      success: true,
+      message: `Deleted ${result.deletedCount} users successfully`,
+      deletedCount: result.deletedCount
+    });
+
+  } catch (error) {
+    console.error('[Error] Delete all users:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete all users',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   sendOtp,
   verifyOtp,
@@ -1257,5 +1280,6 @@ module.exports = {
   getAllDrivers,
   getUserById,
   updateUserById,
-  deleteUserById
+  deleteUserById,
+  deleteAllUsers
 };
