@@ -55,7 +55,18 @@ https://github.com/user-attachments/assets/8903acea-71b5-493b-9aa9-eb08fde9b58e
 
 ---
 
-## Author
+## Contact Me
 
-**Ashwin Yadav**
-[GitHub](https://github.com/Ashwin-0055) • [Email](mailto:hustlerashwin2400@gmail.com)
+Have questions about this project? Want to discuss opportunities or need help understanding the code?
+
+**Feel free to reach out - I'm happy to help!**
+
+| | |
+|--|--|
+| **Email** | [hustlerashwin2400@gmail.com](mailto:hustlerashwin2400@gmail.com) |
+| **GitHub** | [@Ashwin-0055](https://github.com/Ashwin-0055) |
+| **Schedule a Call** | Email me and we can set up a time to chat! |
+
+---
+
+**Ashwin Yadav** - Full Stack Developer
