@@ -196,5 +196,5 @@ I'm always happy to discuss this project, explain the code, or explore opportuni
 
 <p align="center">
   <b>Developed by Ashwin Yadav</b><br>
-  Full Stack Mobile Developer
+  Full Stack Developer
 </p>
