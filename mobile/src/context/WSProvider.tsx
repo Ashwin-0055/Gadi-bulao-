@@ -22,21 +22,27 @@ export const WSProvider: React.FC<WSProviderProps> = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const retryCountRef = useRef(0);
-  const maxRetries = 3;
+  const maxRetries = 5; // Increased retries
+  const isRefreshingRef = useRef(false);
 
   const isAuthenticated = useUserStore((state) => state.isAuthenticated);
   const updateTokens = useUserStore((state) => state.updateTokens);
   const logout = useUserStore((state) => state.logout);
 
   const refreshAccessToken = async (): Promise<boolean> => {
+    // Prevent concurrent refresh attempts
+    if (isRefreshingRef.current) {
+      return false;
+    }
+    isRefreshingRef.current = true;
+
     try {
       const refreshToken = await authStorage.getRefreshToken();
       if (!refreshToken) {
-        // No refresh token available
+        isRefreshingRef.current = false;
         return false;
       }
 
-      // Refreshing access token
       const response = await fetch(`${API_URL}/api/auth/refresh`, {
         method: 'POST',
         headers: {
@@ -50,13 +56,13 @@ export const WSProvider: React.FC<WSProviderProps> = ({ children }) => {
       if (data.success) {
         const { accessToken, refreshToken: newRefreshToken } = data.data.tokens;
         await updateTokens(accessToken, newRefreshToken);
-        // Token refreshed
+        isRefreshingRef.current = false;
         return true;
       }
-      // Token refresh failed
+      isRefreshingRef.current = false;
       return false;
     } catch (error) {
-      // Token refresh error
+      isRefreshingRef.current = false;
       return false;
     }
   };
@@ -73,7 +79,9 @@ export const WSProvider: React.FC<WSProviderProps> = ({ children }) => {
       setIsConnected(true);
       retryCountRef.current = 0;
     } catch (error: any) {
-      // Handle JWT expired - try to refresh token
+      console.log('Socket connection error:', error.message);
+
+      // Handle JWT expired - try to refresh token silently
       if (error.message?.includes('jwt expired') || error.message?.includes('Authentication failed')) {
         const refreshed = await refreshAccessToken();
 
@@ -85,26 +93,36 @@ export const WSProvider: React.FC<WSProviderProps> = ({ children }) => {
             setIsConnecting(false);
             return;
           } catch (retryError) {
-            // Retry failed after token refresh
+            console.log('Retry failed after token refresh');
           }
         }
 
-        // If refresh failed, logout user
-        await logout();
+        // DON'T logout immediately - just mark as disconnected
+        // User can still use the app, we'll retry on next interaction
+        console.log('Token refresh failed, but keeping user logged in');
         setIsConnected(false);
         setIsConnecting(false);
+
+        // Retry connection after delay instead of logging out
+        if (retryCountRef.current < maxRetries) {
+          retryCountRef.current++;
+          setTimeout(() => {
+            connect();
+          }, 10000); // Retry after 10 seconds
+        }
         return;
       }
 
       // Handle timeout errors - server might be waking up (Render free tier)
-      if (error.message?.includes('timeout') && retryCountRef.current < maxRetries) {
+      if ((error.message?.includes('timeout') || error.message?.includes('ECONNREFUSED')) && retryCountRef.current < maxRetries) {
         retryCountRef.current++;
         setIsConnecting(false);
 
-        // Wait and retry
+        // Wait and retry with exponential backoff
+        const delay = Math.min(5000 * Math.pow(2, retryCountRef.current - 1), 30000);
         setTimeout(() => {
           connect();
-        }, 5000);
+        }, delay);
         return;
       }
 

@@ -188,11 +188,18 @@ export default function RiderLiveRide() {
       const watcher = await ExpoLocation.watchPositionAsync(
         {
           accuracy: ExpoLocation.Accuracy.High,
-          timeInterval: 3000, // Update every 3 seconds
-          distanceInterval: 10,
+          timeInterval: 5000, // Update every 5 seconds for accurate customer experience
+          distanceInterval: 5, // Or every 5 meters movement
         },
         (location) => {
-          const { latitude, longitude } = location.coords;
+          const { latitude, longitude, accuracy } = location.coords;
+
+          // Only use accurate locations (less than 30m accuracy)
+          if (accuracy && accuracy > 30) {
+            console.log(`Skipping inaccurate location: ${accuracy}m`);
+            return;
+          }
+
           const newLocation = { latitude, longitude, address: '' };
           setCurrentLocation(newLocation);
 

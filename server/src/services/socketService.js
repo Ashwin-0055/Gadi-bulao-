@@ -272,57 +272,68 @@ class SocketService {
       // Get customer info for the ride request
       const customer = await User.findById(socket.user.userId).select('name phone customerProfile');
 
-      // Get relevant zones (pickup location + neighbors)
-      const zones = zoneManager.getRelevantZones({
-        latitude: pickup.latitude,
-        longitude: pickup.longitude
-      });
-
       console.log(`[Ride] New request: ${ride._id}, type: ${vehicleType}`);
 
-      // Get only drivers with matching vehicle type
-      const matchingDriverSocketIds = zoneManager.getDriverSocketsByVehicleType(zones, vehicleType);
+      // Get ALL drivers within 10km radius of pickup location (sorted by distance)
+      const driversWithinRadius = zoneManager.getDriversWithinRadius(
+        { latitude: pickup.latitude, longitude: pickup.longitude },
+        vehicleType,
+        10 // 10km radius
+      );
 
-      // Broadcast only to drivers with matching vehicle type
-      const rideData = {
-        _id: ride._id.toString(),
-        rideId: ride._id,
-        customer: {
-          name: customer?.name || 'Customer',
-          phone: customer?.phone || '',
-          rating: customer?.customerProfile?.rating || 5.0
-        },
-        pickup: {
-          latitude: pickup.latitude,
-          longitude: pickup.longitude,
-          address: pickup.address
-        },
-        dropoff: {
-          latitude: dropoff.latitude,
-          longitude: dropoff.longitude,
-          address: dropoff.address
-        },
-        vehicleType: vehicleType.toUpperCase(),
-        estimatedFare: fareDetails.totalAmount,
-        fare: fareDetails,
-        distance: fareDetails.distanceKm * 1000,
-        timestamp: new Date()
-      };
+      // If no drivers within 10km, try 20km radius
+      let matchingDrivers = driversWithinRadius;
+      if (matchingDrivers.length === 0) {
+        matchingDrivers = zoneManager.getDriversWithinRadius(
+          { latitude: pickup.latitude, longitude: pickup.longitude },
+          vehicleType,
+          20 // 20km radius as fallback
+        );
+        console.log(`[Ride] Expanded search to 20km radius`);
+      }
 
-      // Emit to each matching driver individually
-      matchingDriverSocketIds.forEach(socketId => {
+      // Send ride request to each driver with their distance from pickup
+      matchingDrivers.forEach(({ socketId, distance, driverInfo }) => {
+        const rideData = {
+          _id: ride._id.toString(),
+          rideId: ride._id,
+          customer: {
+            name: customer?.name || 'Customer',
+            phone: customer?.phone || '',
+            rating: customer?.customerProfile?.rating || 5.0
+          },
+          pickup: {
+            latitude: pickup.latitude,
+            longitude: pickup.longitude,
+            address: pickup.address
+          },
+          dropoff: {
+            latitude: dropoff.latitude,
+            longitude: dropoff.longitude,
+            address: dropoff.address
+          },
+          vehicleType: vehicleType.toUpperCase(),
+          estimatedFare: fareDetails.totalAmount,
+          fare: fareDetails,
+          distance: fareDetails.distanceKm * 1000, // Ride distance in meters
+          timestamp: new Date(),
+          // Distance from driver's current location to pickup
+          pickupDistanceKm: Math.round(distance * 10) / 10, // Round to 1 decimal
+          // Show warning if pickup is more than 5km away
+          isPickupFar: distance > 5
+        };
+
         this.io.to(socketId).emit('newRideRequest', rideData);
       });
 
-      console.log(`[Ride] Notified ${matchingDriverSocketIds.length} ${vehicleType} drivers`);
+      console.log(`[Ride] Notified ${matchingDrivers.length} ${vehicleType} drivers`);
 
       // Send confirmation to customer
       socket.emit('rideRequested', {
         rideId: ride._id,
         status: 'SEARCHING',
         fare: fareDetails,
-        driversNotified: matchingDriverSocketIds.length,
-        zonesNotified: zones.length
+        driversNotified: matchingDrivers.length
       });
 
     } catch (error) {

@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -49,9 +49,22 @@ export default function CustomerHome() {
   const [phoneNumber, setPhoneNumber] = useState(user?.phone || '');
   const [pendingVehicleType, setPendingVehicleType] = useState<'bike' | 'auto' | 'cab' | null>(null);
 
-  // Get current location on mount
+  // Refs to prevent multiple initializations and state updates after unmount
+  const locationInitializedRef = useRef(false);
+  const isMountedRef = useRef(true);
+
+  // Get current location on mount (only once)
   useEffect(() => {
-    getCurrentLocation();
+    isMountedRef.current = true;
+
+    if (!locationInitializedRef.current) {
+      locationInitializedRef.current = true;
+      getCurrentLocation();
+    }
+
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   // Fetch route when both locations are set
@@ -138,23 +151,43 @@ export default function CustomerHome() {
     };
   }, [socketService]);
 
-  const getCurrentLocation = async () => {
+  const getCurrentLocation = useCallback(async () => {
     try {
       const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission denied', 'Location permission is required');
-        setIsLoadingLocation(false);
+        if (isMountedRef.current) {
+          setIsLoadingLocation(false);
+        }
         return;
       }
 
-      const location = await ExpoLocation.getCurrentPositionAsync({
-        accuracy: ExpoLocation.Accuracy.High,
-      });
+      // Try high accuracy first with timeout, fallback to balanced
+      let location;
+      try {
+        location = await Promise.race([
+          ExpoLocation.getCurrentPositionAsync({
+            accuracy: ExpoLocation.Accuracy.High,
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('High accuracy timeout')), 8000)
+          ),
+        ]);
+      } catch (highAccuracyError) {
+        console.warn('High accuracy failed, trying balanced:', highAccuracyError);
+        location = await ExpoLocation.getCurrentPositionAsync({
+          accuracy: ExpoLocation.Accuracy.Balanced,
+        });
+      }
+
+      if (!isMountedRef.current) return;
 
       const { latitude, longitude } = location.coords;
 
       // Reverse geocode to get address
       const address = await reverseGeocode(latitude, longitude);
+
+      if (!isMountedRef.current) return;
 
       const locationData: Location = {
         latitude,
@@ -168,11 +201,24 @@ export default function CustomerHome() {
       }
     } catch (error) {
       console.error('Error getting location:', error);
-      Alert.alert('Error', 'Failed to get current location');
+      if (isMountedRef.current) {
+        // Use approximate location as fallback
+        const fallbackLocation: Location = {
+          latitude: 20.936,
+          longitude: 78.995,
+          address: 'Location unavailable',
+        };
+        setCurrentLocation(fallbackLocation);
+        if (!pickupLocation) {
+          setPickupLocation(fallbackLocation);
+        }
+      }
     } finally {
-      setIsLoadingLocation(false);
+      if (isMountedRef.current) {
+        setIsLoadingLocation(false);
+      }
     }
-  };
+  }, [pickupLocation, setPickupLocation]);
 
   const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
     return await osmReverseGeocode(lat, lng);

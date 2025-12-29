@@ -39,6 +39,10 @@ interface RideRequest {
   };
   distance?: number;
   timestamp?: Date;
+  // Distance from driver's current location to pickup point
+  pickupDistanceKm?: number;
+  // True if pickup is more than 5km away
+  isPickupFar?: boolean;
 }
 
 interface RideRequestItemProps {
@@ -70,6 +74,8 @@ const RideRequestItem: React.FC<RideRequestItemProps> = ({
   const dropoffAddress = request.dropoff?.address || 'Dropoff location';
   const estimatedFare = request.estimatedFare || request.fare?.totalAmount || 0;
   const distance = request.distance || 0;
+  const pickupDistanceKm = request.pickupDistanceKm || 0;
+  const isPickupFar = request.isPickupFar || false;
 
   // Store requestId in ref to avoid stale closures in timer
   const requestIdRef = useRef(requestId);
@@ -250,6 +256,16 @@ const RideRequestItem: React.FC<RideRequestItemProps> = ({
             </View>
           </View>
         </View>
+
+        {/* Pickup Distance Warning - shown when pickup is more than 5km away */}
+        {isPickupFar && pickupDistanceKm > 0 && (
+          <View style={styles.pickupDistanceWarning}>
+            <Ionicons name="warning" size={16} color="#f39c12" />
+            <Text style={styles.pickupDistanceText}>
+              Pickup is {pickupDistanceKm} km away from your location
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Action Buttons */}
@@ -476,6 +492,24 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#333',
     borderStyle: 'dashed' as any,
+  },
+  pickupDistanceWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(243, 156, 18, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(243, 156, 18, 0.3)',
+    gap: 8,
+  },
+  pickupDistanceText: {
+    color: '#f39c12',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
   },
   actions: {
     flexDirection: 'row',

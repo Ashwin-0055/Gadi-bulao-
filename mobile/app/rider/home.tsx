@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -52,6 +52,10 @@ export default function RiderHome() {
   const [phoneNumber, setPhoneNumber] = useState(user?.phone || '');
   const [pendingDutyAction, setPendingDutyAction] = useState(false);
 
+  // Ref to prevent multiple location initializations
+  const locationInitializedRef = useRef(false);
+  const isMountedRef = useRef(true);
+
   // Fetch latest profile from server and update stats
   const refreshProfile = useCallback(async () => {
     try {
@@ -95,25 +99,40 @@ export default function RiderHome() {
     }
   }, [user?.riderProfile]);
 
-  // Get initial location on mount
+  // Get initial location on mount (only once)
   useEffect(() => {
-    initializeLocation();
+    isMountedRef.current = true;
+
+    // Only initialize location once
+    if (!locationInitializedRef.current) {
+      locationInitializedRef.current = true;
+      initializeLocation();
+    }
 
     return () => {
+      isMountedRef.current = false;
       locationWatcher?.remove();
     };
   }, []);
 
-  // Handle duty toggle
+  // Handle duty toggle - only run after location is loaded
+  const prevIsOnDutyRef = useRef<boolean | null>(null);
   useEffect(() => {
+    // Skip if location is still loading or this is the initial render
+    if (isLoadingLocation) return;
+
+    // Skip if duty status hasn't actually changed
+    if (prevIsOnDutyRef.current === isOnDuty) return;
+    prevIsOnDutyRef.current = isOnDuty;
+
     if (isOnDuty && currentLocation) {
       startLocationTracking();
       goOnDuty();
-    } else {
+    } else if (!isOnDuty) {
       stopLocationTracking();
       goOffDuty();
     }
-  }, [isOnDuty]);
+  }, [isOnDuty, isLoadingLocation]);
 
   // Listen for socket events
   useEffect(() => {
@@ -155,19 +174,23 @@ export default function RiderHome() {
       } catch (permError) {
         console.error('Permission request failed:', permError);
         // Use approximate location if permission request crashes
-        setCurrentLocation({
-          latitude: 20.936,
-          longitude: 78.995,
-          address: '',
-        });
-        setIsLoadingLocation(false);
+        if (isMountedRef.current) {
+          setCurrentLocation({
+            latitude: 20.936,
+            longitude: 78.995,
+            address: '',
+          });
+          setIsLoadingLocation(false);
+        }
         return;
       }
 
       const { status } = permissionResult;
       if (status !== 'granted') {
         Alert.alert('Permission denied', 'Location permission is required for drivers');
-        setIsLoadingLocation(false);
+        if (isMountedRef.current) {
+          setIsLoadingLocation(false);
+        }
         return;
       }
 
@@ -202,12 +225,14 @@ export default function RiderHome() {
 
         try {
           const coords = await getLocationWithTimeout();
-          setCurrentLocation({
-            latitude: coords.latitude,
-            longitude: coords.longitude,
-            address: '',
-          });
-          setIsLoadingLocation(false);
+          if (isMountedRef.current) {
+            setCurrentLocation({
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+              address: '',
+            });
+            setIsLoadingLocation(false);
+          }
           return;
         } catch (webError) {
           console.warn('Web geolocation failed, trying expo-location:', webError);
@@ -230,11 +255,13 @@ export default function RiderHome() {
 
         const { latitude, longitude, accuracy } = location.coords;
         console.log(`Location acquired with accuracy: ${accuracy}m`);
-        setCurrentLocation({
-          latitude,
-          longitude,
-          address: '',
-        });
+        if (isMountedRef.current) {
+          setCurrentLocation({
+            latitude,
+            longitude,
+            address: '',
+          });
+        }
       } catch (highAccuracyError) {
         console.warn('High accuracy failed, trying balanced:', highAccuracyError);
 
@@ -249,36 +276,45 @@ export default function RiderHome() {
         ]);
 
         const { latitude, longitude } = location.coords;
-        setCurrentLocation({
-          latitude,
-          longitude,
-          address: '',
-        });
+        if (isMountedRef.current) {
+          setCurrentLocation({
+            latitude,
+            longitude,
+            address: '',
+          });
+        }
       }
     } catch (error) {
       console.error('Error getting location:', error);
       // Use approximate location to prevent crash - location will update when tracking starts
       console.warn('Using approximate location as fallback');
-      setCurrentLocation({
-        latitude: 20.936, // Approximate Butibori coordinates
-        longitude: 78.995,
-        address: '',
-      });
+      if (isMountedRef.current) {
+        setCurrentLocation({
+          latitude: 20.936, // Approximate Butibori coordinates
+          longitude: 78.995,
+          address: '',
+        });
 
-      if (Platform.OS !== 'web') {
-        Alert.alert(
-          'Location Issue',
-          'Could not get your precise location. Please ensure GPS is enabled and try again.',
-          [{ text: 'OK' }]
-        );
+        if (Platform.OS !== 'web') {
+          Alert.alert(
+            'Location Issue',
+            'Could not get your precise location. Please ensure GPS is enabled and try again.',
+            [{ text: 'OK' }]
+          );
+        }
       }
     } finally {
-      setIsLoadingLocation(false);
+      if (isMountedRef.current) {
+        setIsLoadingLocation(false);
+      }
     }
   };
 
   const startLocationTracking = async () => {
     try {
+      // Skip if component unmounted
+      if (!isMountedRef.current) return;
+
       // Skip background permission request on web (not supported)
       if (Platform.OS !== 'web') {
         try {
@@ -297,6 +333,7 @@ export default function RiderHome() {
       if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.geolocation) {
         const watchId = navigator.geolocation.watchPosition(
           (position) => {
+            if (!isMountedRef.current) return;
             const { latitude, longitude, accuracy } = position.coords;
             // Only update if accuracy is reasonable (less than 100m)
             if (!accuracy || accuracy < 100) {
@@ -320,9 +357,11 @@ export default function RiderHome() {
         );
 
         // Store as a subscription-like object for cleanup
-        setLocationWatcher({
-          remove: () => navigator.geolocation.clearWatch(watchId),
-        } as ExpoLocation.LocationSubscription);
+        if (isMountedRef.current) {
+          setLocationWatcher({
+            remove: () => navigator.geolocation.clearWatch(watchId),
+          } as ExpoLocation.LocationSubscription);
+        }
         return;
       }
 
@@ -334,6 +373,7 @@ export default function RiderHome() {
           distanceInterval: 3, // Or every 3 meters
         },
         (location) => {
+          if (!isMountedRef.current) return;
           const { latitude, longitude, accuracy } = location.coords;
           // Only update if accuracy is reasonable (less than 50m for mobile)
           if (!accuracy || accuracy < 50) {
@@ -350,15 +390,19 @@ export default function RiderHome() {
         }
       );
 
-      setLocationWatcher(watcher);
+      if (isMountedRef.current) {
+        setLocationWatcher(watcher);
+      }
     } catch (error) {
       console.error('Error starting location tracking:', error);
       // Don't crash - continue with current location
-      Alert.alert(
-        'Location Tracking',
-        'Location tracking could not be started. Your location may not update in real-time.',
-        [{ text: 'OK' }]
-      );
+      if (isMountedRef.current) {
+        Alert.alert(
+          'Location Tracking',
+          'Location tracking could not be started. Your location may not update in real-time.',
+          [{ text: 'OK' }]
+        );
+      }
     }
   };
 

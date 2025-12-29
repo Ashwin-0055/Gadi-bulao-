@@ -1,4 +1,4 @@
-const { encodeGeohash, getNeighborZones } = require('../utils/geospatial');
+const { encodeGeohash, getNeighborZones, calculateDistance } = require('../utils/geospatial');
 
 /**
  * Zone Manager - Handles geohash-based zone subscriptions for drivers
@@ -103,19 +103,38 @@ class ZoneManager {
 
   /**
    * Get all zones that should receive a ride request
-   * Includes the pickup zone + all 8 neighboring zones (to catch drivers near boundaries)
+   * Uses multiple precision levels to find drivers in a wider area
    * @param {object} pickupLocation - { latitude, longitude }
    * @returns {array} Array of zone strings
    */
   getRelevantZones(pickupLocation) {
     const { latitude, longitude } = pickupLocation;
-    const precision = parseInt(process.env.ZONE_PRECISION) || 6;
-    const centerZone = encodeGeohash(latitude, longitude, precision);
+    const allZones = new Set();
 
-    // Get center + 8 neighbors
-    const zones = getNeighborZones(centerZone);
+    // Try multiple precision levels to find drivers
+    // Precision 6 = ~1.2km, 5 = ~5km, 4 = ~40km
+    const precisions = [6, 5, 4];
 
-    return zones.filter(zone => this.zoneDrivers.has(zone) && this.zoneDrivers.get(zone).size > 0);
+    for (const precision of precisions) {
+      const centerZone = encodeGeohash(latitude, longitude, precision);
+      const neighbors = getNeighborZones(centerZone);
+
+      neighbors.forEach(zone => {
+        // Check if any drivers are in zones that start with this prefix
+        this.zoneDrivers.forEach((drivers, driverZone) => {
+          if (driverZone.startsWith(zone.substring(0, precision)) && drivers.size > 0) {
+            allZones.add(driverZone);
+          }
+        });
+      });
+
+      // If we found drivers at this precision, no need to go wider
+      if (allZones.size > 0) {
+        break;
+      }
+    }
+
+    return Array.from(allZones);
   }
 
   /**
@@ -142,6 +161,41 @@ class ZoneManager {
 
     // Found matching drivers
     return matchingSocketIds;
+  }
+
+  /**
+   * Get ALL online drivers with specific vehicle type within a radius
+   * This is used as a fallback when zone-based matching doesn't find enough drivers
+   * @param {object} pickupLocation - { latitude, longitude }
+   * @param {string} vehicleType - Required vehicle type (bike, auto, cab)
+   * @param {number} radiusKm - Search radius in kilometers (default: 50km)
+   * @returns {array} Array of { socketId, distance } sorted by distance
+   */
+  getDriversWithinRadius(pickupLocation, vehicleType, radiusKm = 50) {
+    const { latitude, longitude } = pickupLocation;
+    const normalizedVehicleType = vehicleType.toLowerCase();
+    const matchingDrivers = [];
+
+    this.driverSockets.forEach((driverInfo, socketId) => {
+      if (driverInfo.vehicleType === normalizedVehicleType && driverInfo.location) {
+        const distance = calculateDistance(
+          latitude,
+          longitude,
+          driverInfo.location.latitude,
+          driverInfo.location.longitude
+        );
+
+        if (distance <= radiusKm) {
+          matchingDrivers.push({ socketId, distance, driverInfo });
+        }
+      }
+    });
+
+    // Sort by distance (closest first)
+    matchingDrivers.sort((a, b) => a.distance - b.distance);
+
+    console.log(`[Zone] Found ${matchingDrivers.length} ${vehicleType} drivers within ${radiusKm}km`);
+    return matchingDrivers;
   }
 
   /**
